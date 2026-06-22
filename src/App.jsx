@@ -4,6 +4,7 @@ import ReactionTime from './ReactionTime'
 import ShootTarget from './ShootTarget'
 import GuessNumber from './GuessNumber'
 import ClickSpeed from './ClickSpeed'
+import TicTacToe from './TicTacToe'
 import './App.css'
 
 function App() {
@@ -24,6 +25,10 @@ function App() {
 
   if (activeGame === 'cps') {
     return <ClickSpeed onBack={() => setActiveGame(null)} />
+  }
+
+  if (activeGame === 'ttt') {
+    return <TicTacToe onBack={() => setActiveGame(null)} />
   }
 
   return (
@@ -53,6 +58,11 @@ function App() {
           emoji="🖱️"
           name="Click Speed"
           onClick={() => setActiveGame('cps')}
+        />
+        <GameCard
+          emoji="⭕"
+          name="Tic-Tac-Toe"
+          onClick={() => setActiveGame('ttt')}
         />
       </div>
     </section>

@@ -65,6 +65,66 @@
   cursor: pointer;
 }
 
+/* === Tic-Tac-Toe === */
+.ttt-diff {
+  display: flex;
+  gap: 8px;
+}
+.ttt-diff button {
+  font-family: var(--heading);
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.ttt-diff button.active {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  color: #fff;
+}
+
+.ttt-status {
+  font-family: var(--heading);
+  font-size: 18px;
+  color: var(--text-h);
+  min-height: 24px;
+}
+
+.ttt-board {
+  display: grid;
+  grid-template-columns: repeat(3, 92px);
+  grid-template-rows: repeat(3, 92px);
+  gap: 8px;
+}
+
+.ttt-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--heading);
+  font-size: 46px;
+  font-weight: 700;
+  border: 1px solid var(--accent-border);
+  border-radius: 12px;
+  background: var(--accent-bg);
+  color: #fff;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.ttt-cell.x { color: #22d3ee; }
+.ttt-cell.o { color: #f87171; }
+
+.ttt-hint {
+  font-size: 15px;
+  color: var(--text);
+}
+
 /* === Click Speed Test === */
 .cps-pad {
   width: 260px;
