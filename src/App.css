@@ -1,3 +1,68 @@
+.brand {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 64px;
+  letter-spacing: 3px;
+  margin: 0;
+  text-transform: none;
+
+  @media (max-width: 1024px) {
+    font-size: 40px;
+  }
+}
+
+.brand-smudge {
+  color: #e2e8f0;
+  font-weight: 500;
+}
+
+.brand-games {
+  font-weight: 900;
+  background: linear-gradient(90deg, #22d3ee, #a855f7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 24px rgba(168, 85, 247, 0.5);
+}
+
+.reaction {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+  text-align: center;
+  color: #fff;
+  transition: background 0.1s;
+}
+
+.reaction h1 {
+  font-size: 56px;
+  margin: 0;
+}
+
+.reaction .sub {
+  font-size: 20px;
+  opacity: 0.9;
+  margin: 0;
+}
+
+.back-btn {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  background: rgba(0, 0, 0, 0.2);
+  color: #fff;
+  font-size: 15px;
+  cursor: pointer;
+}
+
 .game-menu {
   display: flex;
   flex-wrap: wrap;
@@ -10,19 +75,22 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  width: 140px;
-  padding: 24px 16px;
-  border-radius: 12px;
-  border: 2px solid var(--border);
+  gap: 12px;
+  width: 150px;
+  padding: 26px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--accent-border);
   background: var(--accent-bg);
   color: var(--text-h);
   cursor: pointer;
-  transition: border-color 0.2s, transform 0.2s;
+  backdrop-filter: blur(4px);
+  box-shadow: inset 0 0 18px rgba(34, 211, 238, 0.05);
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
 
   &:hover {
-    border-color: var(--accent-border);
-    transform: translateY(-4px);
+    border-color: var(--accent);
+    transform: translateY(-5px);
+    box-shadow: 0 0 24px rgba(34, 211, 238, 0.45);
   }
   &:focus-visible {
     outline: 2px solid var(--accent);
@@ -31,12 +99,16 @@
 }
 
 .game-emoji {
-  font-size: 40px;
+  font-size: 44px;
+  filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.6));
 }
 
 .game-name {
-  font-size: 16px;
+  font-family: var(--heading);
+  font-size: 14px;
   font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
 }
 
 .counter {
