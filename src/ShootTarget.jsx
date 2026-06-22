@@ -6,6 +6,11 @@ const SHOT_TIME = 3500     // ms you get per shot before it's a miss
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
 
+// is this a touch device (phone/tablet) with no mouse?
+const IS_TOUCH =
+  typeof window !== 'undefined' &&
+  ('ontouchstart' in window || navigator.maxTouchPoints > 0)
+
 // a moving target: position (%) + a velocity (% per frame)
 function randomTarget() {
   const angle = Math.random() * Math.PI * 2
@@ -41,10 +46,11 @@ const BUILDINGS = [
 function ShootTarget({ onBack }) {
   const areaRef = useRef(null)
   const timer = useRef(null)
-  const panRef = useRef({ x: 0, y: 0 })   // where the player has aimed
-  const swayRef = useRef({ x: 0, y: 0 })   // the auto-drift "breathing"
-  const targetRef = useRef(randomTarget()) // live target pos + velocity
+  const panRef = useRef({ x: 0, y: 0 })
+  const swayRef = useRef({ x: 0, y: 0 })
+  const targetRef = useRef(randomTarget())
   const phaseRef = useRef('start')
+  const lastTouch = useRef(null)
 
   const [phase, setPhase] = useState('start') // start, playing, result, over
   const [shots, setShots] = useState(0)
@@ -59,19 +65,18 @@ function ShootTarget({ onBack }) {
 
   phaseRef.current = phase
 
-  // mouse-lock panning + lock state
+  // mouse-lock panning (desktop only)
   useEffect(() => {
     function onMove(e) {
       if (document.pointerLockElement !== areaRef.current) return
       const rect = areaRef.current.getBoundingClientRect()
       const maxX = rect.width * 0.4
       const maxY = rect.height * 0.4
-      const next = {
+      panRef.current = {
         x: clamp(panRef.current.x - e.movementX, -maxX, maxX),
         y: clamp(panRef.current.y - e.movementY, -maxY, maxY),
       }
-      panRef.current = next
-      setPan(next)
+      setPan(panRef.current)
     }
     function onChange() {
       setLocked(document.pointerLockElement === areaRef.current)
@@ -84,7 +89,7 @@ function ShootTarget({ onBack }) {
     }
   }, [])
 
-  // one animation loop for scope sway + moving target (runs the whole time)
+  // scope sway + moving target loop
   useEffect(() => {
     let raf
     const start = performance.now()
@@ -115,9 +120,9 @@ function ShootTarget({ onBack }) {
     return () => cancelAnimationFrame(raf)
   }, [])
 
-  // shot clock — only ticks once you're locked into the scope
+  // shot clock — runs once you're locked in (desktop) or right away (touch)
   useEffect(() => {
-    if (phase !== 'playing' || !locked) return
+    if (phase !== 'playing' || (!locked && !IS_TOUCH)) return
     let raf
     const start = performance.now()
     function tick(now) {
@@ -135,7 +140,6 @@ function ShootTarget({ onBack }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, shots, locked])
 
-  // free the mouse when leaving the game
   useEffect(() => {
     return () => {
       if (document.pointerLockElement) document.exitPointerLock()
@@ -173,8 +177,9 @@ function ShootTarget({ onBack }) {
     setPhase('playing')
   }
 
+  // DESKTOP: click to lock the mouse, then click to shoot
   function handleAreaClick() {
-    if (phase !== 'playing') return
+    if (phase !== 'playing' || IS_TOUCH) return
     if (document.pointerLockElement !== areaRef.current) {
       areaRef.current.requestPointerLock()
       return
@@ -182,9 +187,36 @@ function ShootTarget({ onBack }) {
     fire()
   }
 
+  // PHONE: drag a finger to swing the scope
+  function handleTouchStart(e) {
+    if (phase !== 'playing') return
+    const t = e.touches[0]
+    lastTouch.current = { x: t.clientX, y: t.clientY }
+  }
+  function handleTouchMove(e) {
+    if (phase !== 'playing' || !lastTouch.current) return
+    const t = e.touches[0]
+    const dx = t.clientX - lastTouch.current.x
+    const dy = t.clientY - lastTouch.current.y
+    lastTouch.current = { x: t.clientX, y: t.clientY }
+    const rect = areaRef.current.getBoundingClientRect()
+    const maxX = rect.width * 0.4
+    const maxY = rect.height * 0.4
+    panRef.current = {
+      x: clamp(panRef.current.x + dx, -maxX, maxX),
+      y: clamp(panRef.current.y + dy, -maxY, maxY),
+    }
+    setPan(panRef.current)
+  }
+
+  function handleFire() {
+    if (phase !== 'playing') return
+    fire()
+  }
+
   function fire() {
     const rect = areaRef.current.getBoundingClientRect()
-    const offX = panRef.current.x + swayRef.current.x // total world shift right now
+    const offX = panRef.current.x + swayRef.current.x
     const offY = panRef.current.y + swayRef.current.y
     const shotX = rect.width / 2 + Math.cos(wind.angle) * wind.strength
     const shotY = rect.height / 2 + Math.sin(wind.angle) * wind.strength
@@ -221,7 +253,9 @@ function ShootTarget({ onBack }) {
         <div className="shoot-overlay">
           <h1>🎯 Shoot the Target</h1>
           <p className="sub">
-            Click to look through the scope. Beat the clock, fight the wind, the sway, and a moving target!
+            {IS_TOUCH
+              ? 'Drag to aim, tap FIRE. Beat the clock, fight the wind, sway, and a moving target!'
+              : 'Click to look through the scope. Beat the clock, fight the wind, the sway, and a moving target!'}
           </p>
           <button className="play-btn" onClick={startGame}>Start</button>
         </div>
@@ -249,7 +283,13 @@ function ShootTarget({ onBack }) {
             </span>
           </div>
 
-          <div className="shoot-area" ref={areaRef} onClick={handleAreaClick}>
+          <div
+            className="shoot-area"
+            ref={areaRef}
+            onClick={handleAreaClick}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+          >
             <div className="scope-world" style={{ transform: `translate(${worldShift.x}px, ${worldShift.y}px)` }}>
               <div className="city">
                 <div className="skyline">
@@ -287,11 +327,18 @@ function ShootTarget({ onBack }) {
 
             {lastShot?.timeout && <div className="scope-msg">⏰ TOO SLOW</div>}
 
-            {phase === 'playing' && !locked && (
+            {phase === 'playing' && !locked && !IS_TOUCH && (
               <div className="scope-hint">🖱️ Click to look through the scope</div>
             )}
-            {locked && <div className="scope-esc">Esc to free your mouse</div>}
+            {phase === 'playing' && IS_TOUCH && shots === 0 && (
+              <div className="scope-hint">👆 Drag to aim, then tap FIRE</div>
+            )}
+            {locked && !IS_TOUCH && <div className="scope-esc">Esc to free your mouse</div>}
           </div>
+
+          {IS_TOUCH && phase === 'playing' && (
+            <button className="fire-btn" onClick={handleFire}>FIRE 🔫</button>
+          )}
         </>
       )}
     </div>

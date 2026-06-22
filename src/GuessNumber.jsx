@@ -68,6 +68,7 @@ function GuessNumber({ onBack }) {
           <input
             ref={inputRef}
             type="number"
+            inputMode="numeric"
             min="1"
             max="100"
             value={guess}
