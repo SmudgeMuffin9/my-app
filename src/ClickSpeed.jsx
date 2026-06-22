@@ -47,6 +47,19 @@ function ClickSpeed({ onBack }) {
     setClicks((c) => c + 1)
   }
 
+  // spacebar counts as a click too (ignore held-down auto-repeat)
+  useEffect(() => {
+    function onKey(e) {
+      if (e.code !== 'Space') return
+      e.preventDefault()
+      if (e.repeat) return
+      handleClick()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase])
+
   function reset() {
     setClicks(0)
     setTimeLeft(DURATION)
@@ -65,7 +78,7 @@ function ClickSpeed({ onBack }) {
         <>
           <p className="cps-stat">
             {phase === 'ready'
-              ? `Click the pad as fast as you can for ${DURATION} seconds!`
+              ? `Click or tap SPACE as fast as you can for ${DURATION} seconds!`
               : `⏱ ${timeLeft.toFixed(1)}s left`}
           </p>
           <button className="cps-pad" onClick={handleClick}>

@@ -1,13 +1,13 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 // The five "screens" (states) the game can be in.
 // Each one decides the background color, the big title, and the small hint.
 const VIEWS = {
-  start:    { bg: '#1e293b', title: 'Reaction Time ⚡', sub: 'Click anywhere to start' },
-  waiting:  { bg: '#1e3a8a', title: 'Wait for it…',      sub: 'Click the moment it turns RED' },
+  start:    { bg: '#1e293b', title: 'Reaction Time ⚡', sub: 'Click or press SPACE to start' },
+  waiting:  { bg: '#1e3a8a', title: 'Wait for it…',      sub: 'Click / SPACE the moment it turns RED' },
   now:      { bg: '#dc2626', title: 'CLICK NOW!',        sub: '' },
-  result:   { bg: '#16a34a', title: '',                  sub: 'Click to play again' },
-  tooearly: { bg: '#ea580c', title: 'Too early! 😅',     sub: 'Click to try again' },
+  result:   { bg: '#16a34a', title: '',                  sub: 'Click or press SPACE to play again' },
+  tooearly: { bg: '#ea580c', title: 'Too early! 😅',     sub: 'Click or press SPACE to try again' },
 }
 
 function ReactionTime({ onBack }) {
@@ -41,6 +41,19 @@ function ReactionTime({ onBack }) {
       setView('result')
     }
   }
+
+  // spacebar works just like a click/tap (ignore held-down auto-repeat)
+  useEffect(() => {
+    function onKey(e) {
+      if (e.code !== 'Space') return
+      e.preventDefault()
+      if (e.repeat) return
+      handleClick()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view])
 
   const screen = VIEWS[view]
   // On the result screen, the big title is the score in milliseconds.
