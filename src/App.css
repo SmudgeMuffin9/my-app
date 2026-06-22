@@ -65,6 +65,61 @@
   cursor: pointer;
 }
 
+/* === Snake === */
+.snake-score {
+  font-family: var(--heading);
+  font-size: 20px;
+  color: var(--text-h);
+}
+.snake-hint {
+  font-size: 15px;
+  color: var(--text);
+}
+.snake-result {
+  font-family: var(--heading);
+  font-size: 22px;
+  color: var(--text-h);
+}
+.snake-board {
+  position: relative;
+  width: min(380px, 86vw);
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  border: 1px solid var(--accent-border);
+  background-color: rgba(34, 211, 238, 0.05);
+  background-image:
+    linear-gradient(rgba(34, 211, 238, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.05) 1px, transparent 1px);
+  background-size: calc(100% / 15) calc(100% / 15);
+  box-shadow: 0 0 24px rgba(34, 211, 238, 0.15);
+  overflow: hidden;
+  touch-action: none;
+}
+.snake-seg {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid rgba(7, 9, 26, 0.7);
+  border-radius: 28%;
+  background: #22d3ee;
+}
+.snake-seg.head {
+  background: #a855f7;
+  box-shadow: 0 0 8px #a855f7;
+  z-index: 2;
+}
+.snake-food {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: #f87171;
+  box-shadow: 0 0 8px #f87171;
+  animation: foodPulse 0.8s ease-in-out infinite;
+}
+@keyframes foodPulse {
+  0%, 100% { transform: scale(0.8); }
+  50% { transform: scale(1); }
+}
+
 /* === Tic-Tac-Toe === */
 .ttt-diff {
   display: flex;

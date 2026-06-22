@@ -5,6 +5,7 @@ import ShootTarget from './ShootTarget'
 import GuessNumber from './GuessNumber'
 import ClickSpeed from './ClickSpeed'
 import TicTacToe from './TicTacToe'
+import SnakeGame from './SnakeGame'
 import './App.css'
 
 function App() {
@@ -29,6 +30,10 @@ function App() {
 
   if (activeGame === 'ttt') {
     return <TicTacToe onBack={() => setActiveGame(null)} />
+  }
+
+  if (activeGame === 'snake') {
+    return <SnakeGame onBack={() => setActiveGame(null)} />
   }
 
   return (
@@ -63,6 +68,11 @@ function App() {
           emoji="⭕"
           name="Tic-Tac-Toe"
           onClick={() => setActiveGame('ttt')}
+        />
+        <GameCard
+          emoji="🐍"
+          name="Snake"
+          onClick={() => setActiveGame('snake')}
         />
       </div>
     </section>
