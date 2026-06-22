@@ -64,6 +64,41 @@
   cursor: pointer;
 }
 
+/* === Click Speed Test === */
+.cps-pad {
+  width: 260px;
+  height: 200px;
+  border-radius: 18px;
+  border: 2px solid var(--accent);
+  background: var(--accent-bg);
+  color: #fff;
+  font-family: var(--heading);
+  font-size: 52px;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+  box-shadow: 0 0 24px rgba(34, 211, 238, 0.25);
+  transition: transform 0.05s, box-shadow 0.15s;
+}
+.cps-pad:active {
+  transform: scale(0.97);
+  box-shadow: 0 0 38px rgba(34, 211, 238, 0.55);
+}
+.cps-stat {
+  font-family: var(--heading);
+  font-size: 18px;
+  color: var(--text-h);
+}
+.cps-result {
+  font-family: var(--heading);
+  font-size: 56px;
+  margin: 0;
+  background: linear-gradient(90deg, #22d3ee, #a855f7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 /* === Guess the Number === */
 .guess-msg {
   font-family: var(--heading);

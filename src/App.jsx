@@ -3,6 +3,7 @@ import GameCard from './GameCard'
 import ReactionTime from './ReactionTime'
 import ShootTarget from './ShootTarget'
 import GuessNumber from './GuessNumber'
+import ClickSpeed from './ClickSpeed'
 import './App.css'
 
 function App() {
@@ -19,6 +20,10 @@ function App() {
 
   if (activeGame === 'guess') {
     return <GuessNumber onBack={() => setActiveGame(null)} />
+  }
+
+  if (activeGame === 'cps') {
+    return <ClickSpeed onBack={() => setActiveGame(null)} />
   }
 
   return (
@@ -43,6 +48,11 @@ function App() {
           emoji="🤖"
           name="Guess the Number"
           onClick={() => setActiveGame('guess')}
+        />
+        <GameCard
+          emoji="🖱️"
+          name="Click Speed"
+          onClick={() => setActiveGame('cps')}
         />
       </div>
     </section>
