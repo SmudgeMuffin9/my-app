@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import GameCard from './GameCard'
 import ReactionTime from './ReactionTime'
+import ShootTarget from './ShootTarget'
 import './App.css'
 
 function App() {
@@ -9,6 +10,10 @@ function App() {
 
   if (activeGame === 'reaction') {
     return <ReactionTime onBack={() => setActiveGame(null)} />
+  }
+
+  if (activeGame === 'shoot') {
+    return <ShootTarget onBack={() => setActiveGame(null)} />
   }
 
   return (
@@ -27,7 +32,7 @@ function App() {
         <GameCard
           emoji="🎯"
           name="Shoot the Target"
-          onClick={() => alert('Shoot the Target — coming soon!')}
+          onClick={() => setActiveGame('shoot')}
         />
       </div>
     </section>

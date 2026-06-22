@@ -54,6 +54,7 @@
   position: absolute;
   top: 20px;
   left: 20px;
+  z-index: 5;
   padding: 8px 14px;
   border-radius: 8px;
   border: 2px solid rgba(255, 255, 255, 0.5);
@@ -61,6 +62,226 @@
   color: #fff;
   font-size: 15px;
   cursor: pointer;
+}
+
+/* === Shoot the Target === */
+.shoot {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  color: #fff;
+  user-select: none;
+  background: var(--bg);
+}
+
+.shoot-overlay {
+  margin: auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 0 20px;
+}
+
+.play-btn {
+  font-family: var(--heading);
+  font-size: 18px;
+  letter-spacing: 1px;
+  padding: 12px 30px;
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  background: var(--accent-bg);
+  color: #fff;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: box-shadow 0.2s;
+}
+.play-btn:hover {
+  box-shadow: 0 0 22px rgba(34, 211, 238, 0.5);
+}
+
+.shoot-hud {
+  display: flex;
+  gap: 28px;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+  font-family: var(--heading);
+  font-size: 14px;
+  letter-spacing: 1px;
+  border-bottom: 1px solid var(--border);
+}
+
+.time-low {
+  color: #f87171;
+}
+
+.scope-msg {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%);
+  font-family: var(--heading);
+  font-size: 28px;
+  letter-spacing: 1px;
+  color: #f87171;
+  text-shadow: 0 0 12px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+}
+
+.wind-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent);
+}
+.wind-arrow {
+  display: inline-block;
+  font-size: 22px;
+}
+
+.shoot-area {
+  position: relative;
+  flex: 1;
+  cursor: crosshair;
+  overflow: hidden;
+}
+
+.target {
+  position: absolute;
+  width: 84px;
+  height: 84px;
+  margin: -42px 0 0 -42px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    #ef4444 0 12px,
+    #fff 12px 23px,
+    #ef4444 23px 34px,
+    #fff 34px 42px
+  );
+  box-shadow: 0 0 22px rgba(239, 68, 68, 0.6);
+}
+
+/* the world that slides behind the scope (panning effect) */
+.scope-world {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+
+/* the neon-city scene, made bigger than the screen so panning never shows blanks */
+.city {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 180%;
+  height: 180%;
+  transform: translate(-50%, -50%);
+  overflow: hidden;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.5) 1px, transparent 1.6px) 0 0 / 90px 90px,
+    linear-gradient(to bottom, #07091a 0%, #141033 45%, #2a1a4a 72%, #41215c 100%);
+}
+
+.skyline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 55%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.building {
+  background-color: #07070f;
+  background-image: radial-gradient(circle, rgba(34, 211, 238, 0.9) 1.3px, transparent 1.9px);
+  background-size: 15px 19px;
+  background-position: center 6px;
+  border-top-left-radius: 3px;
+  border-top-right-radius: 3px;
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.15);
+}
+.building.purple {
+  background-image: radial-gradient(circle, rgba(168, 85, 247, 0.9) 1.3px, transparent 1.9px);
+  box-shadow: 0 0 18px rgba(168, 85, 247, 0.15);
+}
+
+/* the dark round lens edge of the scope */
+.scope-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 50% 50%,
+    transparent 38%,
+    rgba(0, 0, 0, 0.82) 58%,
+    #000 74%
+  );
+}
+
+/* the fixed sniper scope locked in the center of the screen */
+.reticle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 150px;
+  height: 150px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  fill: none;
+  stroke: #22d3ee;
+  stroke-width: 5;
+  filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.9));
+}
+.reticle-dot {
+  fill: #22d3ee;
+  stroke: none;
+}
+
+.scope-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 18%;
+  transform: translateX(-50%);
+  font-family: var(--heading);
+  font-size: 15px;
+  letter-spacing: 1px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: 1px solid var(--accent-border);
+  pointer-events: none;
+}
+
+.scope-esc {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.55);
+  pointer-events: none;
+}
+
+.shot-mark {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: 28px;
+  font-weight: bold;
+  pointer-events: none;
+}
+.shot-mark.hit {
+  color: #22c55e;
+}
+.shot-mark.miss {
+  color: #f87171;
 }
 
 .game-menu {
