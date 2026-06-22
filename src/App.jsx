@@ -2,6 +2,7 @@ import { useState } from 'react'
 import GameCard from './GameCard'
 import ReactionTime from './ReactionTime'
 import ShootTarget from './ShootTarget'
+import GuessNumber from './GuessNumber'
 import './App.css'
 
 function App() {
@@ -14,6 +15,10 @@ function App() {
 
   if (activeGame === 'shoot') {
     return <ShootTarget onBack={() => setActiveGame(null)} />
+  }
+
+  if (activeGame === 'guess') {
+    return <GuessNumber onBack={() => setActiveGame(null)} />
   }
 
   return (
@@ -33,6 +38,11 @@ function App() {
           emoji="🎯"
           name="Shoot the Target"
           onClick={() => setActiveGame('shoot')}
+        />
+        <GameCard
+          emoji="🤖"
+          name="Guess the Number"
+          onClick={() => setActiveGame('guess')}
         />
       </div>
     </section>

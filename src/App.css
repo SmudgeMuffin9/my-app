@@ -64,6 +64,43 @@
   cursor: pointer;
 }
 
+/* === Guess the Number === */
+.guess-msg {
+  font-family: var(--heading);
+  font-size: 22px;
+  color: var(--text-h);
+  min-height: 28px;
+}
+.guess-range {
+  font-size: 18px;
+  color: var(--text);
+}
+.guess-range b {
+  color: var(--accent);
+}
+.guess-form {
+  display: flex;
+  gap: 10px;
+}
+.guess-input {
+  width: 130px;
+  font-family: var(--heading);
+  font-size: 22px;
+  text-align: center;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+  color: #fff;
+}
+.guess-input:focus {
+  outline: 2px solid var(--accent);
+}
+.guess-count {
+  color: var(--text);
+  font-size: 16px;
+}
+
 /* === Shoot the Target === */
 .shoot {
   position: fixed;
