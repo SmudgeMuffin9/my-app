@@ -33,7 +33,7 @@ and give Keaton the link. Don't trust the deploy blindly — confirm it.
   GitHub — that's why `cpd` runs `vercel --prod` manually)
 - Google Fonts: **Orbitron** (headings) + **Rajdhani** (body), loaded in `index.html`
 
-## The games (7)
+## The games (8)
 All in `src/`, each rendered by `App.jsx` based on the `activeGame` state.
 | Game | File | `game` key | Score | Sort |
 |------|------|-----------|-------|------|
@@ -44,6 +44,7 @@ All in `src/`, each rendered by `App.jsx` based on the `activeGame` state.
 | Tic-Tac-Toe | `TicTacToe.jsx` | — | (no score) | minimax AI: easy/medium/hard |
 | Snake | `SnakeGame.jsx` | `snake` | food eaten | higher wins |
 | Whack-a-Mole | `WhackAMole.jsx` | `whack` | moles whacked in 30s | higher wins |
+| Split Brain | `SplitBrain.jsx` | `split` | points (10/sec survived) | higher wins |
 
 ## Key components & files
 - `App.jsx` — the menu + simple router (switches between menu / each game / leaderboards)
@@ -93,7 +94,7 @@ All in `src/`, each rendered by `App.jsx` based on the `activeGame` state.
 - Vercel does NOT auto-deploy from GitHub; deploys are manual via `vercel --prod`.
 
 ## Ideas / next steps
-- Goal is ~30 minigames (at 7). Mix quick games (e.g. Reflex Tap, Aim Trainer,
+- Goal is ~30 minigames (at 8). Mix quick games (e.g. Reflex Tap, Aim Trainer,
   Color Trap) with deeper ones (Dino Jump, Brick Breaker, Pong).
 - ✅ Owner can delete bad scores from a leaderboard (done). Could add more owner
   powers later.

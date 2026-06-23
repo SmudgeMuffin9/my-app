@@ -4,6 +4,7 @@ import Leaderboard from './Leaderboard'
 const GAMES = [
   { game: 'snake', title: '🐍 Snake' },
   { game: 'whack', title: '🔨 Whack-a-Mole' },
+  { game: 'split', title: '🧠 Split Brain', unit: ' pts' },
   { game: 'shoot', title: '🎯 Shoot the Target' },
   { game: 'cps', title: '🖱️ Click Speed' },
   { game: 'reaction', title: '⚡ Reaction Time', lowerIsBetter: true, unit: ' ms' },

@@ -209,6 +209,54 @@
   transform: scale(1.2);
 }
 
+/* === Split Brain === */
+.split-keys {
+  font-size: 14px;
+  color: var(--text-h);
+}
+.split-stat {
+  font-family: var(--heading);
+  font-size: 20px;
+  color: var(--text-h);
+}
+.split-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(94vw, 480px);
+  margin: 14px auto;
+}
+.split-lane {
+  position: relative;
+  height: 120px;
+  background: #0b1020;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  touch-action: none; /* stop the phone from scrolling when you tap to jump */
+  cursor: pointer;
+}
+.split-runner {
+  position: absolute;
+  bottom: 8px;
+  font-size: 30px;
+  line-height: 1;
+  transform-origin: bottom center;
+}
+.split-ob {
+  position: absolute;
+  bottom: 8px;
+  width: 18px;
+  height: 30px;
+  margin-left: -9px;
+  background: var(--accent);
+  border-radius: 4px;
+}
+.split-result {
+  font-family: var(--heading);
+  color: var(--accent);
+}
+
 /* === Whack-a-Mole === */
 .whack-stat {
   font-family: var(--heading);
