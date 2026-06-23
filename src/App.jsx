@@ -9,6 +9,7 @@ import SnakeGame from './SnakeGame'
 import WhackAMole from './WhackAMole'
 import SplitBrain from './SplitBrain'
 import GravityFlip from './GravityFlip'
+import SmudgeWipe from './SmudgeWipe'
 import AuthBar from './AuthBar'
 import Leaderboards from './Leaderboards'
 import './App.css'
@@ -51,6 +52,10 @@ function App() {
 
   if (activeGame === 'gravity') {
     return <GravityFlip onBack={() => setActiveGame(null)} />
+  }
+
+  if (activeGame === 'smudge') {
+    return <SmudgeWipe onBack={() => setActiveGame(null)} />
   }
 
   if (activeGame === 'leaderboards') {
@@ -110,6 +115,11 @@ function App() {
           emoji="🌀"
           name="Gravity Flip"
           onClick={() => setActiveGame('gravity')}
+        />
+        <GameCard
+          emoji="🧽"
+          name="Smudge Wipe"
+          onClick={() => setActiveGame('smudge')}
         />
       </div>
 

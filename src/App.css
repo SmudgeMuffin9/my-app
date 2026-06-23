@@ -296,6 +296,44 @@
   top: 0;
 }
 
+/* === Smudge Wipe === */
+.smudge-wrap {
+  width: min(94vw, 420px);
+  margin: 14px auto;
+}
+.smudge-field {
+  position: relative;
+  height: 420px;
+  background: #0b1020;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  touch-action: none; /* don't let the phone scroll while you wipe */
+  cursor: crosshair;
+}
+.smudge {
+  position: absolute;
+  border-radius: 50%;
+  transform: translate(-50%, -50%); /* x/y is the smudge's CENTER */
+  background: radial-gradient(
+    circle,
+    rgba(168, 85, 247, 0.85),
+    rgba(168, 85, 247, 0.18) 70%,
+    transparent
+  );
+  filter: blur(1px);
+  cursor: pointer;
+}
+.smudge.danger {
+  /* turns red as it gets close to game-over size */
+  background: radial-gradient(
+    circle,
+    rgba(248, 113, 113, 0.92),
+    rgba(248, 113, 113, 0.22) 70%,
+    transparent
+  );
+}
+
 /* === Whack-a-Mole === */
 .whack-stat {
   font-family: var(--heading);
