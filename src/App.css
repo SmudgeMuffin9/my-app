@@ -257,6 +257,45 @@
   color: var(--accent);
 }
 
+/* === Gravity Flip === */
+.gravity-wrap {
+  width: min(94vw, 480px);
+  margin: 14px auto;
+}
+.gravity-lane {
+  position: relative;
+  height: 360px;
+  background: #0b1020;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  touch-action: none; /* stop the phone from scrolling when you tap to flip */
+  cursor: pointer;
+}
+.gravity-ball {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  margin-left: -14px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 14px var(--accent);
+}
+.gravity-ob {
+  position: absolute;
+  width: 26px;
+  margin-left: -13px;
+  background: var(--accent-2);
+  border-radius: 4px;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+}
+.gravity-ob.floor {
+  bottom: 0;
+}
+.gravity-ob.ceiling {
+  top: 0;
+}
+
 /* === Whack-a-Mole === */
 .whack-stat {
   font-family: var(--heading);

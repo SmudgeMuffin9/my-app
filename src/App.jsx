@@ -8,6 +8,7 @@ import TicTacToe from './TicTacToe'
 import SnakeGame from './SnakeGame'
 import WhackAMole from './WhackAMole'
 import SplitBrain from './SplitBrain'
+import GravityFlip from './GravityFlip'
 import AuthBar from './AuthBar'
 import Leaderboards from './Leaderboards'
 import './App.css'
@@ -46,6 +47,10 @@ function App() {
 
   if (activeGame === 'split') {
     return <SplitBrain onBack={() => setActiveGame(null)} />
+  }
+
+  if (activeGame === 'gravity') {
+    return <GravityFlip onBack={() => setActiveGame(null)} />
   }
 
   if (activeGame === 'leaderboards') {
@@ -100,6 +105,11 @@ function App() {
           emoji="🧠"
           name="Split Brain"
           onClick={() => setActiveGame('split')}
+        />
+        <GameCard
+          emoji="🌀"
+          name="Gravity Flip"
+          onClick={() => setActiveGame('gravity')}
         />
       </div>
 
