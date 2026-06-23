@@ -6,6 +6,7 @@ import GuessNumber from './GuessNumber'
 import ClickSpeed from './ClickSpeed'
 import TicTacToe from './TicTacToe'
 import SnakeGame from './SnakeGame'
+import WhackAMole from './WhackAMole'
 import AuthBar from './AuthBar'
 import Leaderboards from './Leaderboards'
 import './App.css'
@@ -36,6 +37,10 @@ function App() {
 
   if (activeGame === 'snake') {
     return <SnakeGame onBack={() => setActiveGame(null)} />
+  }
+
+  if (activeGame === 'whack') {
+    return <WhackAMole onBack={() => setActiveGame(null)} />
   }
 
   if (activeGame === 'leaderboards') {
@@ -80,6 +85,11 @@ function App() {
           emoji="🐍"
           name="Snake"
           onClick={() => setActiveGame('snake')}
+        />
+        <GameCard
+          emoji="🔨"
+          name="Whack-a-Mole"
+          onClick={() => setActiveGame('whack')}
         />
       </div>
 

@@ -3,6 +3,7 @@ import Leaderboard from './Leaderboard'
 // every game that has a score, with the right sort direction
 const GAMES = [
   { game: 'snake', title: '🐍 Snake' },
+  { game: 'whack', title: '🔨 Whack-a-Mole' },
   { game: 'shoot', title: '🎯 Shoot the Target' },
   { game: 'cps', title: '🖱️ Click Speed' },
   { game: 'reaction', title: '⚡ Reaction Time', lowerIsBetter: true, unit: ' ms' },

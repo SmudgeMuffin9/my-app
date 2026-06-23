@@ -194,6 +194,58 @@
   font-family: var(--heading);
   color: var(--accent);
 }
+/* Owner-only delete button on each leaderboard row */
+.lb-del {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  padding: 2px 4px;
+  opacity: 0.55;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.lb-del:hover {
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+/* === Whack-a-Mole === */
+.whack-stat {
+  font-family: var(--heading);
+  font-size: 20px;
+  color: var(--text-h);
+}
+.whack-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  width: min(90vw, 360px);
+  margin: 16px auto;
+}
+.whack-hole {
+  aspect-ratio: 1 / 1;
+  font-size: 44px;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  background: #0b1020;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s, transform 0.05s;
+  user-select: none;
+}
+.whack-hole.up {
+  background: radial-gradient(circle, #2a1a0a 0%, #0b1020 70%);
+  border-color: var(--accent);
+}
+.whack-hole.up:active {
+  transform: scale(0.9);
+}
+.whack-result {
+  font-family: var(--heading);
+  color: var(--accent);
+}
 
 /* === Snake === */
 .snake-score {
