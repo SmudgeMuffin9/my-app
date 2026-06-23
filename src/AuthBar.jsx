@@ -5,7 +5,7 @@ import { isOwner } from './owner'
 import UsernamePicker from './UsernamePicker'
 
 function AuthBar() {
-  const { user, username } = useAuth()
+  const { user, username, coins } = useAuth()
   const [email, setEmail] = useState('')
   const [open, setOpen] = useState(false)
   const [sent, setSent] = useState(false)
@@ -43,6 +43,7 @@ function AuthBar() {
         <span className={`auth-hi ${isOwner(username) ? 'owner' : ''}`}>
           {isOwner(username) ? `🔨 ${username} (owner)` : `👋 ${username}`}
         </span>
+        <span className="coin-balance">🪙 {coins} Smudge's</span>
         <button className="auth-link" onClick={signOut}>Sign out</button>
       </div>
     )

@@ -12,11 +12,15 @@ import GravityFlip from './GravityFlip'
 import SmudgeWipe from './SmudgeWipe'
 import AuthBar from './AuthBar'
 import Leaderboards from './Leaderboards'
+import Shop from './Shop'
+import { useAuth } from './auth'
+import { GAMES, canPlay } from './games'
 import './App.css'
 
 function App() {
   // Which game is open right now? null = show the menu.
   const [activeGame, setActiveGame] = useState(null)
+  const { owned } = useAuth() // which locked games this player has unlocked
 
   if (activeGame === 'reaction') {
     return <ReactionTime onBack={() => setActiveGame(null)} />
@@ -62,6 +66,10 @@ function App() {
     return <Leaderboards onBack={() => setActiveGame(null)} />
   }
 
+  if (activeGame === 'shop') {
+    return <Shop onBack={() => setActiveGame(null)} />
+  }
+
   return (
     <section id="center">
       <AuthBar />
@@ -71,61 +79,24 @@ function App() {
       <p>Pick a minigame to play 👇</p>
 
       <div className="game-menu">
-        <GameCard
-          emoji="⚡"
-          name="Reaction Time"
-          onClick={() => setActiveGame('reaction')}
-        />
-        <GameCard
-          emoji="🎯"
-          name="Shoot the Target"
-          onClick={() => setActiveGame('shoot')}
-        />
-        <GameCard
-          emoji="🤖"
-          name="Guess the Number"
-          onClick={() => setActiveGame('guess')}
-        />
-        <GameCard
-          emoji="🖱️"
-          name="Click Speed"
-          onClick={() => setActiveGame('cps')}
-        />
-        <GameCard
-          emoji="⭕"
-          name="Tic-Tac-Toe"
-          onClick={() => setActiveGame('ttt')}
-        />
-        <GameCard
-          emoji="🐍"
-          name="Snake"
-          onClick={() => setActiveGame('snake')}
-        />
-        <GameCard
-          emoji="🔨"
-          name="Whack-a-Mole"
-          onClick={() => setActiveGame('whack')}
-        />
-        <GameCard
-          emoji="🧠"
-          name="Split Brain"
-          onClick={() => setActiveGame('split')}
-        />
-        <GameCard
-          emoji="🌀"
-          name="Gravity Flip"
-          onClick={() => setActiveGame('gravity')}
-        />
-        <GameCard
-          emoji="🧽"
-          name="Smudge Wipe"
-          onClick={() => setActiveGame('smudge')}
-        />
+        {GAMES.filter((g) => canPlay(g.key, owned)).map((g) => (
+          <GameCard
+            key={g.key}
+            emoji={g.emoji}
+            name={g.name}
+            onClick={() => setActiveGame(g.key)}
+          />
+        ))}
       </div>
 
-      <button className="play-btn" onClick={() => setActiveGame('leaderboards')}>
-        🏆 Leaderboards
-      </button>
+      <div className="menu-actions">
+        <button className="play-btn" onClick={() => setActiveGame('shop')}>
+          🛒 Shop
+        </button>
+        <button className="play-btn" onClick={() => setActiveGame('leaderboards')}>
+          🏆 Leaderboards
+        </button>
+      </div>
     </section>
   )
 }

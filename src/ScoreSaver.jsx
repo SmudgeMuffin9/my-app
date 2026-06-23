@@ -7,9 +7,10 @@ import { isOwner } from './owner'
 // when the game ends, keeping only your BEST per game. lowerIsBetter={true}
 // for games where smaller wins (ms).
 function ScoreSaver({ game, score, lowerIsBetter = false }) {
-  const { user, username } = useAuth()
+  const { user, username, coins, reloadProfile } = useAuth()
   const [saved, setSaved] = useState(false)
   const [message, setMessage] = useState(null)
+  const [earned, setEarned] = useState(null) // Smudge's earned this game
   const [top, setTop] = useState([])
   const [error, setError] = useState(null)
   const didSaveRef = useRef(false) // makes sure we only auto-save once
@@ -80,6 +81,16 @@ function ScoreSaver({ game, score, lowerIsBetter = false }) {
     setSaved(true)
     setMessage(isBetter ? '🎉 New personal best!' : `Not a new best — your best is ${existing.score}`)
     loadTop()
+
+    // earn Smudge's for this run (server decides the amount; we show the gain)
+    const { data: newTotal, error: coinErr } = await supabase.rpc('award_coins', {
+      p_game: game,
+      p_score: score,
+    })
+    if (!coinErr && typeof newTotal === 'number') {
+      setEarned(newTotal - coins) // how many we just gained
+      reloadProfile() // refresh the balance shown in the menu bar
+    }
   }
 
   return (
@@ -92,6 +103,10 @@ function ScoreSaver({ game, score, lowerIsBetter = false }) {
         <p className="lb-saved">{message}</p>
       ) : (
         <p className="lb-empty">💾 Saving your score…</p>
+      )}
+
+      {earned != null && earned > 0 && (
+        <p className="lb-earned">🪙 +{earned} Smudge's!</p>
       )}
 
       {error && <p className="lb-error">⚠️ {error}</p>}

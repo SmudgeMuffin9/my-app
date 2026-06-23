@@ -1038,3 +1038,93 @@
     border-right-color: var(--border);
   }
 }
+
+/* === Coins / Shop === */
+.coin-balance {
+  font-family: var(--heading);
+  font-size: 14px;
+  color: #fcd34d; /* gold */
+  letter-spacing: 0.5px;
+}
+.menu-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.game-card.locked {
+  opacity: 0.5;
+  position: relative;
+}
+.game-card.locked:hover {
+  opacity: 0.85;
+}
+.game-lock {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 16px;
+}
+.lb-earned {
+  font-family: var(--heading);
+  color: #fcd34d;
+  font-size: 18px;
+  margin-top: 6px;
+}
+.shop-balance {
+  font-family: var(--heading);
+  color: #fcd34d;
+  font-size: 18px;
+}
+.shop-msg {
+  color: var(--text-h);
+  font-size: 15px;
+}
+.shop-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
+  max-width: 840px;
+  margin: 8px auto;
+}
+.shop-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 170px;
+  padding: 20px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+}
+.shop-emoji {
+  font-size: 40px;
+}
+.shop-name {
+  font-family: var(--heading);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-h);
+}
+.shop-price {
+  font-family: var(--heading);
+  color: #fcd34d;
+  font-size: 16px;
+}
+.shop-owned {
+  font-family: var(--heading);
+  color: var(--accent);
+  font-size: 14px;
+}
+.shop-buy {
+  padding: 8px 18px;
+  font-size: 14px;
+}
+.shop-buy:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
