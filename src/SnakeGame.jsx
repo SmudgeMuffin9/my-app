@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import ScoreSaver from './ScoreSaver'
 
 const GRID = 15 // 15 x 15 board
 const START_SNAKE = [{ x: 7, y: 7 }, { x: 6, y: 7 }, { x: 5, y: 7 }]
@@ -109,6 +110,8 @@ function SnakeGame({ onBack }) {
   // keyboard controls
   useEffect(() => {
     function onKey(e) {
+      // don't hijack keys while the player is typing (e.g. their name)
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
       const k = e.key.toLowerCase()
       const map = {
         arrowup: { x: 0, y: -1 }, w: { x: 0, y: -1 },
@@ -193,6 +196,7 @@ function SnakeGame({ onBack }) {
               <p className="snake-result">
                 {won ? '🏆 YOU WIN!' : '💀 Game over!'} Score: {score}
               </p>
+              <ScoreSaver game="snake" score={score} />
               <button className="play-btn" onClick={start}>Play again</button>
             </>
           )}

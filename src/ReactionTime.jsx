@@ -45,6 +45,7 @@ function ReactionTime({ onBack }) {
   // spacebar works just like a click/tap (ignore held-down auto-repeat)
   useEffect(() => {
     function onKey(e) {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
       if (e.code !== 'Space') return
       e.preventDefault()
       if (e.repeat) return

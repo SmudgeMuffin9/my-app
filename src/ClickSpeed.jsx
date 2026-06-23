@@ -50,6 +50,7 @@ function ClickSpeed({ onBack }) {
   // spacebar counts as a click too (ignore held-down auto-repeat)
   useEffect(() => {
     function onKey(e) {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
       if (e.code !== 'Space') return
       e.preventDefault()
       if (e.repeat) return

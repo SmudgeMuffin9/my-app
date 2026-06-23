@@ -6,6 +6,7 @@ import GuessNumber from './GuessNumber'
 import ClickSpeed from './ClickSpeed'
 import TicTacToe from './TicTacToe'
 import SnakeGame from './SnakeGame'
+import AuthBar from './AuthBar'
 import './App.css'
 
 function App() {
@@ -38,6 +39,7 @@ function App() {
 
   return (
     <section id="center">
+      <AuthBar />
       <h1 className="brand">
         <span className="brand-smudge">smudge</span><span className="brand-games">GAMES</span>
       </h1>
