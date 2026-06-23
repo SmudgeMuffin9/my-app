@@ -33,7 +33,7 @@ and give Keaton the link. Don't trust the deploy blindly — confirm it.
   GitHub — that's why `cpd` runs `vercel --prod` manually)
 - Google Fonts: **Orbitron** (headings) + **Rajdhani** (body), loaded in `index.html`
 
-## The games (8)
+## The games (10)
 All in `src/`, each rendered by `App.jsx` based on the `activeGame` state.
 | Game | File | `game` key | Score | Sort |
 |------|------|-----------|-------|------|
@@ -45,6 +45,17 @@ All in `src/`, each rendered by `App.jsx` based on the `activeGame` state.
 | Snake | `SnakeGame.jsx` | `snake` | food eaten | higher wins |
 | Whack-a-Mole | `WhackAMole.jsx` | `whack` | moles whacked in 30s | higher wins |
 | Split Brain | `SplitBrain.jsx` | `split` | points (10/sec survived) | higher wins |
+| Gravity Flip | `GravityFlip.jsx` | `gravity` | points (10/sec survived) | higher wins |
+| Smudge Wipe | `SmudgeWipe.jsx` | `smudge` | smudges wiped | higher wins |
+
+Both Gravity Flip and Smudge Wipe are ORIGINAL games (not clones of anything).
+Gravity Flip: tap/Space to flip gravity, dodge floor/ceiling blocks — you can only
+flip while stuck to a surface (kills a spam-to-float exploit). Smudge Wipe: tap
+growing smudges before any reaches `MAX_R` and ends the game.
+
+NOTE: when adding a game with a score, wire it in TWO places — the game's own
+game-over screen (`<ScoreSaver .../>`) AND the `GAMES` list in `Leaderboards.jsx`
+(the 🏆 tab). Easy to forget the second one.
 
 ## Key components & files
 - `App.jsx` — the menu + simple router (switches between menu / each game / leaderboards)
@@ -54,8 +65,12 @@ All in `src/`, each rendered by `App.jsx` based on the `activeGame` state.
   row only if the new score is better) + shows that game's Top 10. A `didSaveRef`
   guard makes the auto-save fire exactly once. Props: `game`, `score`, `lowerIsBetter`
 - `Leaderboard.jsx` — Top 10 for one game. If the OWNER is logged in, each row
-  gets a 🗑️ delete button (owner-only score deletion). Front-end button is just
-  convenience — the real guard is a Supabase DELETE policy (see below).
+  gets a 🗑️ delete button (delete one score) AND a 🚫 ban button on non-owner
+  rows. Front-end buttons are just convenience — the real guards are Supabase
+  policies (see below).
+- `db/bans-setup.sql` — the one-time SQL that powers the ban feature (run in the
+  Supabase SQL Editor). Makes the `bans` table + owner-only ban/unban policies +
+  restrictive policies so a banned username can't INSERT/UPDATE scores.
 - `Leaderboards.jsx` — the "🏆 Leaderboards" tab page (renders a `Leaderboard` per game)
 - `auth.jsx` — `AuthProvider` + `useAuth()`; tracks logged-in `user` and their `username`
 - `AuthBar.jsx` — sign in (magic link) / sign out / shows username, on the menu
@@ -72,12 +87,22 @@ All in `src/`, each rendered by `App.jsx` based on the `activeGame` state.
 - **Tables:**
   - `profiles` — `id` (=auth user id), `username` (unique, NOT updatable = locked once set), `created_at`
   - `scores` — `id`, `game`, `name` (username copy), `score` (integer), `user_id`, `created_at`;
-    UNIQUE `(user_id, game)` so each player has ONE row per game (their best)
-- **RLS policies:** everyone can READ scores/profiles; only logged-in users can
-  INSERT/UPDATE their own. Usernames have no UPDATE policy (locked).
+    UNIQUE `(user_id, game)` so each player has ONE row per game (their best).
+    NOTE: `user_id` has a foreign key to the auth users table — a score must
+    belong to a REAL account (you can't insert a fake random id).
+  - `bans` — `username` (PK), `created_at`. The list of banned usernames.
+- **RLS policies:** everyone can READ scores/profiles/bans; only logged-in users
+  can INSERT/UPDATE their own scores. Usernames have no UPDATE policy (locked).
   - **DELETE on scores:** only the owner. Policy checks the deleter's profile
     username = `smudgemuffin` (see `owner.js`). This is what makes the 🗑️
     leaderboard buttons actually work.
+  - **BAN:** only the owner can INSERT/DELETE rows in `bans`. Two RESTRICTIVE
+    policies on `scores` then block any banned username from INSERT/UPDATE, so a
+    banned player literally can't post a score. The 🚫 button bans + wipes their
+    scores. Full setup SQL is in `db/bans-setup.sql`.
+  - ⚠️ GOTCHA: the owner username is stored as `SMUDGEMUFFIN` (caps), so owner
+    policies must compare with `lower(...) = 'smudgemuffin'`, not a plain `=`
+    (a plain `=` fails with "violates row-level security policy").
 - To change DB schema/policies: Supabase dashboard → SQL Editor → run SQL.
 
 ## Conventions / patterns
@@ -96,10 +121,11 @@ All in `src/`, each rendered by `App.jsx` based on the `activeGame` state.
 - Vercel does NOT auto-deploy from GitHub; deploys are manual via `vercel --prod`.
 
 ## Ideas / next steps
-- Goal is ~30 minigames (at 8). Mix quick games (e.g. Reflex Tap, Aim Trainer,
-  Color Trap) with deeper ones (Dino Jump, Brick Breaker, Pong).
-- ✅ Owner can delete bad scores from a leaderboard (done). Could add more owner
-  powers later.
+- Goal is ~30 minigames (at 10). Keaton prefers ORIGINAL games over clones of
+  famous ones ("something people can't just search up on Google").
+- ✅ Owner can delete bad scores (🗑️) and BAN a username (🚫) — both done.
+  Could add an un-ban UI later (right now un-ban = delete the row from `bans`
+  via SQL).
 - Tic-Tac-Toe has no leaderboard (could add a win counter).
 
 ## About Keaton (how to work with him)
