@@ -39,6 +39,28 @@ function Leaderboard({ game, title, lowerIsBetter = false, unit = '' }) {
     loadScores() // refresh the list so the deleted score disappears
   }
 
+  // Owner-only "real ban": add the name to the bans table (the database then
+  // refuses any future scores from them) AND wipe their current scores.
+  async function handleBan(name) {
+    if (
+      !window.confirm(
+        `Ban ${name}?\nAll their scores get wiped and they can't post new ones.`
+      )
+    )
+      return
+    const { error: banErr } = await supabase.from('bans').insert({ username: name })
+    if (banErr) {
+      setError(banErr.message)
+      return
+    }
+    const { error: delErr } = await supabase.from('scores').delete().eq('name', name)
+    if (delErr) {
+      setError(delErr.message)
+      return
+    }
+    loadScores() // refresh so the banned player drops off the board
+  }
+
   return (
     <div className="lb">
       <h3 className="lb-title">{title}</h3>
@@ -61,6 +83,15 @@ function Leaderboard({ game, title, lowerIsBetter = false, unit = '' }) {
                   title={`Delete ${row.name}'s score`}
                 >
                   🗑️
+                </button>
+              )}
+              {canDelete && !isOwner(row.name) && (
+                <button
+                  className="lb-del lb-ban"
+                  onClick={() => handleBan(row.name)}
+                  title={`Ban ${row.name}`}
+                >
+                  🚫
                 </button>
               )}
             </li>
