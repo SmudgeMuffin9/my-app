@@ -810,7 +810,7 @@
   flex-wrap: wrap;
   gap: 16px;
   justify-content: center;
-  max-width: 520px;
+  max-width: 840px; /* wide enough for ~5 cards per row → fewer, shorter rows */
 }
 
 .game-card {
