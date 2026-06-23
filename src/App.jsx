@@ -91,7 +91,7 @@ function App() {
       <h1 className="brand">
         <span className="brand-smudge">smudge</span><span className="brand-games">GAMES</span>
       </h1>
-      <p>Pick a minigame to play 👇</p>
+      <p>Pick a minigame to play</p>
 
       <div className="game-menu">
         {orderedGames.map((g) => (
