@@ -1,17 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import { useAuth } from './auth'
 import { isOwner } from './owner'
 
-// Reusable: <ScoreSaver game="snake" score={score} />. Keeps only your BEST
-// score per game. lowerIsBetter={true} for games where smaller wins (ms).
+// Reusable: <ScoreSaver game="snake" score={score} />. AUTO-saves your score
+// when the game ends, keeping only your BEST per game. lowerIsBetter={true}
+// for games where smaller wins (ms).
 function ScoreSaver({ game, score, lowerIsBetter = false }) {
   const { user, username } = useAuth()
   const [saved, setSaved] = useState(false)
-  const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(null)
   const [top, setTop] = useState([])
   const [error, setError] = useState(null)
+  const didSaveRef = useRef(false) // makes sure we only auto-save once
 
   async function loadTop() {
     const { data, error } = await supabase
@@ -29,8 +30,18 @@ function ScoreSaver({ game, score, lowerIsBetter = false }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Auto-save the moment we have a logged-in user with a username. The ref
+  // guard means this fires exactly once, even if the screen re-renders or the
+  // user only logs in after the game-over screen is already showing.
+  useEffect(() => {
+    if (user && username && !didSaveRef.current) {
+      didSaveRef.current = true
+      save()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, username])
+
   async function save() {
-    setSaving(true)
     setError(null)
 
     // do I already have a score for this game?
@@ -42,7 +53,6 @@ function ScoreSaver({ game, score, lowerIsBetter = false }) {
       .maybeSingle()
     if (e1) {
       setError(e1.message)
-      setSaving(false)
       return
     }
 
@@ -63,7 +73,6 @@ function ScoreSaver({ game, score, lowerIsBetter = false }) {
       err = r.error
     }
 
-    setSaving(false)
     if (err) {
       setError(err.message)
       return
@@ -79,12 +88,10 @@ function ScoreSaver({ game, score, lowerIsBetter = false }) {
         <p className="lb-empty">🔐 Sign in (top of the menu) to save your score!</p>
       ) : !username ? (
         <p className="lb-empty">👆 Pick a username (top of the menu) to save your score!</p>
-      ) : !saved ? (
-        <button className="play-btn" onClick={save} disabled={saving}>
-          {saving ? 'Saving…' : `Save score as ${username}`}
-        </button>
-      ) : (
+      ) : saved ? (
         <p className="lb-saved">{message}</p>
+      ) : (
+        <p className="lb-empty">💾 Saving your score…</p>
       )}
 
       {error && <p className="lb-error">⚠️ {error}</p>}

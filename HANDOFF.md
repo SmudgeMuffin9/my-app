@@ -49,8 +49,10 @@ All in `src/`, each rendered by `App.jsx` based on the `activeGame` state.
 ## Key components & files
 - `App.jsx` — the menu + simple router (switches between menu / each game / leaderboards)
 - `GameCard.jsx` — reusable menu card
-- `ScoreSaver.jsx` — drop into a game's game-over screen: saves your BEST score
-  (needs login) + shows that game's Top 10. Props: `game`, `score`, `lowerIsBetter`
+- `ScoreSaver.jsx` — drop into a game's game-over screen: AUTO-saves your score
+  when it mounts (no button) and keeps only your BEST per game (replaces your old
+  row only if the new score is better) + shows that game's Top 10. A `didSaveRef`
+  guard makes the auto-save fire exactly once. Props: `game`, `score`, `lowerIsBetter`
 - `Leaderboard.jsx` — Top 10 for one game. If the OWNER is logged in, each row
   gets a 🗑️ delete button (owner-only score deletion). Front-end button is just
   convenience — the real guard is a Supabase DELETE policy (see below).
