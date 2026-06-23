@@ -83,6 +83,7 @@
 .lb-name.owner {
   color: #fbbf24;
   font-weight: 700;
+  font-size: 14px; /* a bit smaller so "NAME (owner)" fits on one line */
 }
 .auth-link {
   font-family: var(--heading);
@@ -187,8 +188,12 @@
 }
 .lb-name {
   flex: 1;
+  min-width: 0; /* lets the name shrink instead of pushing the score off */
   text-align: left;
   color: var(--text-h);
+  white-space: nowrap; /* keep the name on ONE line */
+  overflow: hidden;
+  text-overflow: ellipsis; /* safety net for super-long names */
 }
 .lb-score {
   font-family: var(--heading);
