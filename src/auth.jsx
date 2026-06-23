@@ -27,11 +27,12 @@ export function AuthProvider({ children }) {
     setUsername(data?.username ?? null)
     setCoins(data?.coins ?? 0)
 
-    // which locked games has this user unlocked?
+    // which locked games has this user unlocked? newest purchase first
     const { data: unlocks } = await supabase
       .from('unlocks')
       .select('game')
       .eq('user_id', u.id)
+      .order('created_at', { ascending: false })
     setOwned((unlocks ?? []).map((r) => r.game))
   }, [])
 

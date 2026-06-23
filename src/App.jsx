@@ -24,6 +24,15 @@ function App() {
   const [activeGame, setActiveGame] = useState(null)
   const { username, owned } = useAuth() // username + unlocked games
 
+  // Menu order: games you BOUGHT first (newest purchase first), then free games.
+  const boughtFirst = owned
+    .map((key) => GAMES.find((g) => g.key === key))
+    .filter(Boolean)
+  const freeGames = GAMES.filter(
+    (g) => canPlay(g.key, owned) && !owned.includes(g.key)
+  )
+  const orderedGames = [...boughtFirst, ...freeGames]
+
   if (activeGame === 'reaction') {
     return <ReactionTime onBack={() => setActiveGame(null)} />
   }
@@ -85,7 +94,7 @@ function App() {
       <p>Pick a minigame to play 👇</p>
 
       <div className="game-menu">
-        {GAMES.filter((g) => canPlay(g.key, owned)).map((g) => (
+        {orderedGames.map((g) => (
           <GameCard
             key={g.key}
             emoji={g.emoji}
