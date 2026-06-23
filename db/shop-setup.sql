@@ -128,6 +128,31 @@ begin
 end;
 $$;
 
--- let logged-in players call the two cashier functions
+-- 7) CASHIER #3 — set_coins: OWNER-ONLY. Set any player's balance to an exact
+--    amount (for the owner Players admin page). lower() so the owner check
+--    works against the SMUDGEMUFFIN (caps) username.
+create or replace function set_coins(p_username text, p_amount integer)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare target uuid;
+begin
+  if lower((select username from profiles where id = auth.uid())) <> 'smudgemuffin' then
+    raise exception 'only the owner can set coins';
+  end if;
+  if p_amount < 0 then raise exception 'coins cannot be negative'; end if;
+
+  select id into target from profiles where lower(username) = lower(p_username);
+  if target is null then raise exception 'no such player'; end if;
+
+  update profiles set coins = p_amount where id = target;
+  return p_amount;
+end;
+$$;
+
+-- let logged-in players call the cashier functions
 grant execute on function award_coins(text, integer) to authenticated;
 grant execute on function buy_game(text)            to authenticated;
+grant execute on function set_coins(text, integer)  to authenticated;

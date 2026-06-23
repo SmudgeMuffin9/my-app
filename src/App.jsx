@@ -13,14 +13,16 @@ import SmudgeWipe from './SmudgeWipe'
 import AuthBar from './AuthBar'
 import Leaderboards from './Leaderboards'
 import Shop from './Shop'
+import AdminPlayers from './AdminPlayers'
 import { useAuth } from './auth'
+import { isOwner } from './owner'
 import { GAMES, canPlay } from './games'
 import './App.css'
 
 function App() {
   // Which game is open right now? null = show the menu.
   const [activeGame, setActiveGame] = useState(null)
-  const { owned } = useAuth() // which locked games this player has unlocked
+  const { username, owned } = useAuth() // username + unlocked games
 
   if (activeGame === 'reaction') {
     return <ReactionTime onBack={() => setActiveGame(null)} />
@@ -70,6 +72,10 @@ function App() {
     return <Shop onBack={() => setActiveGame(null)} />
   }
 
+  if (activeGame === 'admin') {
+    return <AdminPlayers onBack={() => setActiveGame(null)} />
+  }
+
   return (
     <section id="center">
       <AuthBar />
@@ -96,6 +102,11 @@ function App() {
         <button className="play-btn" onClick={() => setActiveGame('leaderboards')}>
           🏆 Leaderboards
         </button>
+        {isOwner(username) && (
+          <button className="play-btn" onClick={() => setActiveGame('admin')}>
+            🔨 Players
+          </button>
+        )}
       </div>
     </section>
   )
