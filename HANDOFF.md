@@ -33,7 +33,7 @@ and give Keaton the link. Don't trust the deploy blindly — confirm it.
   GitHub — that's why `cpd` runs `vercel --prod` manually)
 - Google Fonts: **Orbitron** (headings) + **Rajdhani** (body), loaded in `index.html`
 
-## The games (6)
+## The games (7)
 All in `src/`, each rendered by `App.jsx` based on the `activeGame` state.
 | Game | File | `game` key | Score | Sort |
 |------|------|-----------|-------|------|
@@ -43,13 +43,16 @@ All in `src/`, each rendered by `App.jsx` based on the `activeGame` state.
 | Click Speed (CPS) | `ClickSpeed.jsx` | `cps` | total clicks | higher wins |
 | Tic-Tac-Toe | `TicTacToe.jsx` | — | (no score) | minimax AI: easy/medium/hard |
 | Snake | `SnakeGame.jsx` | `snake` | food eaten | higher wins |
+| Whack-a-Mole | `WhackAMole.jsx` | `whack` | moles whacked in 30s | higher wins |
 
 ## Key components & files
 - `App.jsx` — the menu + simple router (switches between menu / each game / leaderboards)
 - `GameCard.jsx` — reusable menu card
 - `ScoreSaver.jsx` — drop into a game's game-over screen: saves your BEST score
   (needs login) + shows that game's Top 10. Props: `game`, `score`, `lowerIsBetter`
-- `Leaderboard.jsx` — read-only Top 10 for one game
+- `Leaderboard.jsx` — Top 10 for one game. If the OWNER is logged in, each row
+  gets a 🗑️ delete button (owner-only score deletion). Front-end button is just
+  convenience — the real guard is a Supabase DELETE policy (see below).
 - `Leaderboards.jsx` — the "🏆 Leaderboards" tab page (renders a `Leaderboard` per game)
 - `auth.jsx` — `AuthProvider` + `useAuth()`; tracks logged-in `user` and their `username`
 - `AuthBar.jsx` — sign in (magic link) / sign out / shows username, on the menu
@@ -69,6 +72,9 @@ All in `src/`, each rendered by `App.jsx` based on the `activeGame` state.
     UNIQUE `(user_id, game)` so each player has ONE row per game (their best)
 - **RLS policies:** everyone can READ scores/profiles; only logged-in users can
   INSERT/UPDATE their own. Usernames have no UPDATE policy (locked).
+  - **DELETE on scores:** only the owner. Policy checks the deleter's profile
+    username = `smudgemuffin` (see `owner.js`). This is what makes the 🗑️
+    leaderboard buttons actually work.
 - To change DB schema/policies: Supabase dashboard → SQL Editor → run SQL.
 
 ## Conventions / patterns
@@ -87,9 +93,10 @@ All in `src/`, each rendered by `App.jsx` based on the `activeGame` state.
 - Vercel does NOT auto-deploy from GitHub; deploys are manual via `vercel --prod`.
 
 ## Ideas / next steps
-- Goal is ~30 minigames (at 6). Mix quick games (e.g. Reflex Tap, Aim Trainer,
+- Goal is ~30 minigames (at 7). Mix quick games (e.g. Reflex Tap, Aim Trainer,
   Color Trap) with deeper ones (Dino Jump, Brick Breaker, Pong).
-- Possible owner/admin powers (e.g. delete a bad score from a leaderboard).
+- ✅ Owner can delete bad scores from a leaderboard (done). Could add more owner
+  powers later.
 - Tic-Tac-Toe has no leaderboard (could add a win counter).
 
 ## About Keaton (how to work with him)
