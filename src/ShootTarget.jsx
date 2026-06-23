@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import ScoreSaver from './ScoreSaver'
 
 const TOTAL_SHOTS = 10
 const TARGET_RADIUS = 42   // smaller target = more precision needed
@@ -267,6 +268,7 @@ function ShootTarget({ onBack }) {
           <p className="sub">
             {score >= 700 ? 'Legend! 🏆' : score >= 400 ? 'Solid aim! 🎯' : 'Keep grinding! 💪'}
           </p>
+          <ScoreSaver game="shoot" score={score} />
           <button className="play-btn" onClick={startGame}>Play again</button>
         </div>
       )}

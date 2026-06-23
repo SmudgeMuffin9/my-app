@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import ScoreSaver from './ScoreSaver'
 
 // the robot secretly picks a whole number from 1 to 100
 function newSecret() {
@@ -80,7 +81,10 @@ function GuessNumber({ onBack }) {
           <button type="submit" className="play-btn">Guess</button>
         </form>
       ) : (
-        <button className="play-btn" onClick={reset}>Play again</button>
+        <>
+          <ScoreSaver game="guess" score={count} lowerIsBetter />
+          <button className="play-btn" onClick={reset}>Play again</button>
+        </>
       )}
 
       <p className="guess-count">Guesses: {count}</p>

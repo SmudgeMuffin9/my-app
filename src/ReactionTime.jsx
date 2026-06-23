@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import ScoreSaver from './ScoreSaver'
 
 // The five "screens" (states) the game can be in.
 // Each one decides the background color, the big title, and the small hint.
@@ -6,7 +7,7 @@ const VIEWS = {
   start:    { bg: '#1e293b', title: 'Reaction Time ⚡', sub: 'Click or press SPACE to start' },
   waiting:  { bg: '#1e3a8a', title: 'Wait for it…',      sub: 'Click / SPACE the moment it turns RED' },
   now:      { bg: '#dc2626', title: 'CLICK NOW!',        sub: '' },
-  result:   { bg: '#16a34a', title: '',                  sub: 'Click or press SPACE to play again' },
+  result:   { bg: '#16a34a', title: '',                  sub: '' },
   tooearly: { bg: '#ea580c', title: 'Too early! 😅',     sub: 'Click or press SPACE to try again' },
 }
 
@@ -31,7 +32,7 @@ function ReactionTime({ onBack }) {
   }
 
   function handleClick() {
-    if (view === 'start' || view === 'result' || view === 'tooearly') {
+    if (view === 'start' || view === 'tooearly') {
       beginWaiting()
     } else if (view === 'waiting') {
       clearTimeout(timer.current) // they jumped the gun
@@ -70,6 +71,13 @@ function ReactionTime({ onBack }) {
       </button>
       <h1>{title}</h1>
       {screen.sub && <p className="sub">{screen.sub}</p>}
+
+      {view === 'result' && (
+        <>
+          <ScoreSaver game="reaction" score={ms} lowerIsBetter />
+          <button className="play-btn" onClick={beginWaiting}>Play again</button>
+        </>
+      )}
     </div>
   )
 }

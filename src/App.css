@@ -108,6 +108,20 @@
   color: #22c55e;
 }
 
+/* === Leaderboards tab === */
+.lb-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px 40px;
+  justify-content: center;
+  align-items: flex-start;
+  max-width: 880px;
+  padding: 0 16px 40px;
+}
+.lb-grid .lb {
+  width: min(360px, 86vw);
+}
+
 /* === Leaderboard (ScoreSaver) === */
 .lb {
   display: flex;

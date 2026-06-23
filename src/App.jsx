@@ -7,6 +7,7 @@ import ClickSpeed from './ClickSpeed'
 import TicTacToe from './TicTacToe'
 import SnakeGame from './SnakeGame'
 import AuthBar from './AuthBar'
+import Leaderboards from './Leaderboards'
 import './App.css'
 
 function App() {
@@ -35,6 +36,10 @@ function App() {
 
   if (activeGame === 'snake') {
     return <SnakeGame onBack={() => setActiveGame(null)} />
+  }
+
+  if (activeGame === 'leaderboards') {
+    return <Leaderboards onBack={() => setActiveGame(null)} />
   }
 
   return (
@@ -77,6 +82,10 @@ function App() {
           onClick={() => setActiveGame('snake')}
         />
       </div>
+
+      <button className="play-btn" onClick={() => setActiveGame('leaderboards')}>
+        🏆 Leaderboards
+      </button>
     </section>
   )
 }

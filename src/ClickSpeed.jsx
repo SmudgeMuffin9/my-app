@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import ScoreSaver from './ScoreSaver'
 
 const DURATION = 5 // seconds you get to spam
 
@@ -93,6 +94,7 @@ function ClickSpeed({ onBack }) {
           <p className="cps-stat">
             {clicks} clicks in {DURATION}s — {cpsRank(cps)}
           </p>
+          <ScoreSaver game="cps" score={clicks} />
           <button className="play-btn" onClick={reset}>Try again</button>
         </>
       )}
