@@ -65,7 +65,8 @@ insert into coin_rates (game, rate, lower_better, baseline) values
   ('snake',    10.0, false, 0),    -- 4000   ~150
   ('gravity',   1.5, false, 0),    -- 9000   ~225
   ('smudge',   16.0, false, 0),    -- 20000  ~325
-  ('split',     3.0, false, 0)     -- 40000  ~450
+  ('split',     3.0, false, 0),    -- 40000  ~450
+  ('survivor',  1.5, false, 0)     -- free   ~60  (kills × 1.5, ~40 kills -> 60)
 on conflict (game) do update
   set rate = excluded.rate, lower_better = excluded.lower_better, baseline = excluded.baseline;
 

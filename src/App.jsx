@@ -10,6 +10,7 @@ import WhackAMole from './WhackAMole'
 import SplitBrain from './SplitBrain'
 import GravityFlip from './GravityFlip'
 import SmudgeWipe from './SmudgeWipe'
+import SmudgeSurvivors from './SmudgeSurvivors'
 import AuthBar from './AuthBar'
 import Leaderboards from './Leaderboards'
 import Shop from './Shop'
@@ -79,6 +80,10 @@ function App() {
 
   if (activeGame === 'smudge') {
     return <SmudgeWipe onBack={() => setActiveGame(null)} />
+  }
+
+  if (activeGame === 'survivor') {
+    return <SmudgeSurvivors onBack={() => setActiveGame(null)} />
   }
 
   if (activeGame === 'leaderboards') {

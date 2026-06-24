@@ -12,6 +12,7 @@ export const GAMES = [
   { key: 'gravity', name: 'Gravity Flip', emoji: '🌀' },
   { key: 'smudge', name: 'Smudge Wipe', emoji: '🧽' },
   { key: 'muffin', name: 'Muffin Clicker', emoji: '🧁' },
+  { key: 'survivor', name: 'Smudge Survivors', emoji: '🧟' },
 ]
 
 // The games you must BUY in the shop. Everything else is free.

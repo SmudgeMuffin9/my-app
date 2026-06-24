@@ -1378,3 +1378,93 @@
   color: var(--accent);
   font-size: 15px;
 }
+
+/* ===== Smudge Survivors ===== */
+.surv-hud {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin: 6px 0 10px;
+}
+.surv-hearts {
+  font-size: 16px;
+  letter-spacing: 1px;
+}
+.surv-wrap {
+  position: relative;
+  width: min(360px, 92vw);
+  margin: 0 auto;
+}
+.surv-canvas {
+  width: 100%;
+  aspect-ratio: 360 / 460;
+  border-radius: 12px;
+  border: 2px solid var(--accent-border);
+  box-shadow: var(--shadow);
+  touch-action: none;           /* stop the page scrolling while you drag */
+  display: block;
+  cursor: crosshair;
+}
+/* the level-up overlay sits on top of the arena */
+.surv-levelup {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(10, 14, 26, 0.86);
+  border-radius: 12px;
+  padding: 10px;
+}
+.surv-lvl-title {
+  font-family: var(--heading);
+  color: var(--accent);
+  margin: 0;
+  text-shadow: 0 0 16px rgba(34, 211, 238, 0.6);
+}
+.surv-lvl-sub {
+  margin: 0 0 6px;
+  color: var(--text-h);
+}
+.surv-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 88%;
+}
+.surv-card {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 10px;
+  align-items: center;
+  text-align: left;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--text-h);
+  cursor: pointer;
+  transition: transform 0.08s, background 0.12s;
+}
+.surv-card:hover {
+  background: rgba(34, 211, 238, 0.16);
+  transform: translateY(-2px);
+}
+.surv-card-icon {
+  grid-row: 1 / 3;
+  font-size: 26px;
+  text-align: center;
+}
+.surv-card-name {
+  font-family: var(--heading);
+  font-size: 15px;
+  color: var(--accent);
+}
+.surv-card-desc {
+  font-size: 14px;
+  color: var(--text);
+}
