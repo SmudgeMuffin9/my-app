@@ -1290,8 +1290,8 @@
   margin-top: -4px;
 }
 .muffin-big {
-  font-size: 120px;
-  line-height: 1;
+  display: inline-flex;
+  line-height: 0;
   background: none;
   border: none;
   cursor: pointer;
@@ -1299,6 +1299,15 @@
   filter: drop-shadow(0 6px 18px rgba(168, 85, 247, 0.4));
   transition: transform 0.06s;
   user-select: none;
+}
+.muffin-img {
+  display: block;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center 40%; /* nudge so the muffin (not the board) is centered */
+  border: 3px solid var(--accent-border);
 }
 .muffin-big:hover {
   transform: scale(1.04);

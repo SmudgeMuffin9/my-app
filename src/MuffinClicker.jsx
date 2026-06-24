@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { supabase } from './supabase'
 import { useAuth } from './auth'
+import muffinImg from './assets/muffin.png'
 
 // --- buildings: auto-bake muffins per second ---
 const BUILDINGS = [
@@ -12,28 +13,35 @@ const BUILDINGS = [
   { key: 'rocket', name: 'Muffin Rocket', emoji: '🚀', baseCost: 1400000, cps: 1400 },
 ]
 
-// --- upgrades: one-time buys that MULTIPLY output (they stack) ---
-const UPGRADES = [
-  { key: 'arms', name: 'Strong Arms', emoji: '🖐️', cost: 500, type: 'click', desc: 'Clicks ×2' },
-  { key: 'fast', name: 'Faster Baking', emoji: '⚡', cost: 3000, type: 'cps', desc: 'All bakers ×2' },
-  { key: 'power', name: 'Power Clicks', emoji: '💪', cost: 12000, type: 'click', desc: 'Clicks ×2 again' },
-  { key: 'hot', name: 'Hot Ovens', emoji: '🔥', cost: 80000, type: 'cps', desc: 'All bakers ×2 again' },
+// --- doublers: buy them as many times as you want, each one doubles again ---
+const DOUBLERS = [
+  { key: 'clickx2', name: '2× Clicks', emoji: '🖐️', baseCost: 500, type: 'click', sub: 'Double muffins per click' },
+  { key: 'cpsx2', name: '2× Baking', emoji: '⚡', baseCost: 3000, type: 'cps', sub: 'Double muffins per second' },
 ]
 
 const GROWTH = 1.15 // each building you own makes the next 15% pricier
+const U_GROWTH = 10 // each doubler level costs 10× the last
 const MAX_OFFLINE = 8 * 3600 // cap "while away" earnings at 8 hours
 const EMPTY = Object.fromEntries(BUILDINGS.map((b) => [b.key, 0]))
+const EMPTY_UP = { clickx2: 0, cpsx2: 0 }
 
 const costOf = (b, count) => Math.ceil(b.baseCost * Math.pow(GROWTH, count))
+const doublerCost = (d, level) => Math.ceil(d.baseCost * Math.pow(U_GROWTH, level))
 
-// doubling multiplier from owned upgrades of a given type
-const multFrom = (owned, type) =>
-  UPGRADES.filter((u) => owned.includes(u.key) && u.type === type).reduce((m) => m * 2, 1)
+// old saves stored upgrades as a list of names — turn that into the new counts
+function normalizeUpgrades(up) {
+  if (Array.isArray(up)) {
+    return {
+      clickx2: (up.includes('arms') ? 1 : 0) + (up.includes('power') ? 1 : 0),
+      cpsx2: (up.includes('fast') ? 1 : 0) + (up.includes('hot') ? 1 : 0),
+    }
+  }
+  return { ...EMPTY_UP, ...(up || {}) }
+}
 
 // pretty numbers: 0.1 -> "0.1", 1234 -> "1.2K", 3450000 -> "3.4M" ...
 function fmt(n) {
   if (n < 1000) {
-    // keep the decimal for small fractional values (like 0.1 / sec)
     if (n > 0 && n < 100 && !Number.isInteger(n)) return n.toFixed(1)
     return String(Math.floor(n))
   }
@@ -56,25 +64,23 @@ function MuffinClicker({ onBack }) {
   const { user } = useAuth()
   const [muffins, setMuffins] = useState(0)
   const [counts, setCounts] = useState(EMPTY)
-  const [upgrades, setUpgrades] = useState([]) // keys of owned upgrades
+  const [upgrades, setUpgrades] = useState(EMPTY_UP) // { clickx2, cpsx2 } = how many times bought
   const [loaded, setLoaded] = useState(false)
   const [offlineMsg, setOfflineMsg] = useState(null)
 
-  // refs mirror latest values so the loop + saver always see "now"
   const muffinsRef = useRef(0)
   const countsRef = useRef(EMPTY)
-  const upgradesRef = useRef([])
+  const upgradesRef = useRef(EMPTY_UP)
   const lastRef = useRef(0)
   muffinsRef.current = muffins
   countsRef.current = counts
   upgradesRef.current = upgrades
 
-  const clickMult = multFrom(upgrades, 'click')
-  const cpsMult = multFrom(upgrades, 'cps')
-  const clickPower = 1 * clickMult
+  const clickPower = Math.pow(2, upgrades.clickx2) // ×2 per click-doubler bought
+  const cpsMult = Math.pow(2, upgrades.cpsx2)
   const mps = BUILDINGS.reduce((s, b) => s + counts[b.key] * b.cps, 0) * cpsMult
 
-  // 1) load this player's save once (+ offline earnings since they left)
+  // 1) load save once (+ offline earnings since they left)
   useEffect(() => {
     if (!user) return
     supabase
@@ -85,9 +91,9 @@ function MuffinClicker({ onBack }) {
       .then(({ data }) => {
         if (data) {
           const sc = { ...EMPTY, ...(data.buildings || {}) }
-          const su = data.upgrades || []
+          const su = normalizeUpgrades(data.upgrades)
           const savedMps =
-            BUILDINGS.reduce((s, b) => s + sc[b.key] * b.cps, 0) * multFrom(su, 'cps')
+            BUILDINGS.reduce((s, b) => s + sc[b.key] * b.cps, 0) * Math.pow(2, su.cpsx2)
           const elapsed = data.updated_at
             ? Math.min(MAX_OFFLINE, Math.max(0, (Date.now() - new Date(data.updated_at).getTime()) / 1000))
             : 0
@@ -111,7 +117,7 @@ function MuffinClicker({ onBack }) {
       lastRef.current = now
       const rate =
         BUILDINGS.reduce((s, b) => s + countsRef.current[b.key] * b.cps, 0) *
-        multFrom(upgradesRef.current, 'cps')
+        Math.pow(2, upgradesRef.current.cpsx2)
       if (rate > 0) setMuffins((m) => m + rate * dt)
     }, 100)
     return () => clearInterval(id)
@@ -142,7 +148,7 @@ function MuffinClicker({ onBack }) {
   }, [loaded, save])
 
   function clickMuffin() {
-    setMuffins((m) => m + 1 * multFrom(upgradesRef.current, 'click'))
+    setMuffins((m) => m + Math.pow(2, upgradesRef.current.clickx2))
   }
 
   function buyBuilding(b) {
@@ -152,10 +158,12 @@ function MuffinClicker({ onBack }) {
     setCounts((c) => ({ ...c, [b.key]: c[b.key] + 1 }))
   }
 
-  function buyUpgrade(u) {
-    if (upgradesRef.current.includes(u.key) || muffinsRef.current < u.cost) return
-    setMuffins((m) => m - u.cost)
-    setUpgrades((list) => [...list, u.key])
+  function buyDoubler(d) {
+    const level = upgradesRef.current[d.key] || 0
+    const cost = doublerCost(d, level)
+    if (muffinsRef.current < cost) return
+    setMuffins((m) => m - cost)
+    setUpgrades((u) => ({ ...u, [d.key]: (u[d.key] || 0) + 1 }))
   }
 
   return (
@@ -172,7 +180,7 @@ function MuffinClicker({ onBack }) {
           <p className="muffin-mps">{fmt(mps)} / sec · +{fmt(clickPower)} per click</p>
 
           <button className="muffin-big" onClick={clickMuffin} aria-label="Click the muffin">
-            🧁
+            <img className="muffin-img" src={muffinImg} alt="muffin" draggable="false" />
           </button>
 
           <h3 className="muffin-head">🏗️ Buildings</h3>
@@ -200,23 +208,22 @@ function MuffinClicker({ onBack }) {
 
           <h3 className="muffin-head">⭐ Upgrades</h3>
           <div className="muffin-shop">
-            {UPGRADES.map((u) => {
-              const owned = upgrades.includes(u.key)
+            {DOUBLERS.map((d) => {
+              const level = upgrades[d.key] || 0
+              const cost = doublerCost(d, level)
               return (
                 <button
-                  key={u.key}
+                  key={d.key}
                   className="muffin-buy"
-                  disabled={owned || muffins < u.cost}
-                  onClick={() => buyUpgrade(u)}
+                  disabled={muffins < cost}
+                  onClick={() => buyDoubler(d)}
                 >
-                  <span className="muffin-buy-emoji">{u.emoji}</span>
+                  <span className="muffin-buy-emoji">{d.emoji}</span>
                   <span className="muffin-buy-main">
-                    <span className="muffin-buy-name">{u.name}</span>
-                    <span className="muffin-buy-sub">{u.desc}</span>
+                    <span className="muffin-buy-name">{d.name} · lvl {level}</span>
+                    <span className="muffin-buy-sub">{d.sub}</span>
                   </span>
-                  <span className="muffin-buy-cost">
-                    {owned ? '✅ owned' : `🧁 ${fmt(u.cost)}`}
-                  </span>
+                  <span className="muffin-buy-cost">🧁 {fmt(cost)}</span>
                 </button>
               )
             })}
