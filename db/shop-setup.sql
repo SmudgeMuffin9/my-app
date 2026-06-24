@@ -39,6 +39,12 @@ create table if not exists unlocks (
 alter table unlocks enable row level security;
 create policy "see my own unlocks" on unlocks for select using (user_id = auth.uid());
 -- (no INSERT policy on purpose — only buy_game() can add unlocks)
+-- owner powers: the owner can SEE and REMOVE any player's purchased games
+-- (used by the 🔨 Players admin page to show game chips + remove them)
+create policy "owner sees all unlocks" on unlocks for select
+  using (lower((select username from profiles where id = auth.uid())) = 'smudgemuffin');
+create policy "owner removes unlocks" on unlocks for delete
+  using (lower((select username from profiles where id = auth.uid())) = 'smudgemuffin');
 
 -- 4) EXCHANGE RATES: how a game's score turns into Smudge's.
 --    rate = coins per point. lower_better games (smaller score = better)
