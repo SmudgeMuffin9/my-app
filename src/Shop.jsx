@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import { useAuth } from './auth'
-import { GAMES, LOCKED } from './games'
+import { GAMES, LOCKED, TIME_LOCKED } from './games'
 
 // The shop: buy locked games with Smudge's. Buying goes through the
 // buy_game() cashier function in the database (the only safe way to spend).
 function Shop({ onBack }) {
-  const { user, username, coins, owned, reloadProfile } = useAuth()
+  const { user, username, coins, owned, playtime, reloadProfile } = useAuth()
   const [prices, setPrices] = useState({}) // { game: price }
   const [busy, setBusy] = useState(null)   // which game is mid-purchase
   const [msg, setMsg] = useState(null)
@@ -86,6 +86,33 @@ function Shop({ onBack }) {
           )
         })}
       </div>
+
+      {/* Time-unlocked games (e.g. Muffin Clicker): a play-time progress bar */}
+      {Object.keys(TIME_LOCKED).map((key) => {
+        const g = GAMES.find((x) => x.key === key)
+        const need = TIME_LOCKED[key]
+        const have = Math.min(playtime, need)
+        const pct = Math.round((have / need) * 100)
+        const unlocked = playtime >= need
+        const mins = (s) => Math.floor(s / 60)
+        return (
+          <div key={key} className="timegame">
+            <span className="timegame-title">{g.emoji} {g.name}</span>
+            {unlocked ? (
+              <span className="shop-owned">✅ Unlocked! Play it from the menu.</span>
+            ) : (
+              <>
+                <div className="timebar">
+                  <div className="timebar-fill" style={{ width: `${pct}%` }} />
+                </div>
+                <span className="timegame-sub">
+                  ⏱ {mins(have)} / {mins(need)} min played — unlocks automatically
+                </span>
+              </>
+            )}
+          </div>
+        )
+      })}
     </section>
   )
 }

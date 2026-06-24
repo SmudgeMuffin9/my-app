@@ -14,6 +14,7 @@ import AuthBar from './AuthBar'
 import Leaderboards from './Leaderboards'
 import Shop from './Shop'
 import AdminPlayers from './AdminPlayers'
+import MuffinClicker from './MuffinClicker'
 import { useAuth } from './auth'
 import { isOwner } from './owner'
 import { GAMES, canPlay } from './games'
@@ -22,14 +23,14 @@ import './App.css'
 function App() {
   // Which game is open right now? null = show the menu.
   const [activeGame, setActiveGame] = useState(null)
-  const { username, owned } = useAuth() // username + unlocked games
+  const { username, owned, playtime } = useAuth() // username + unlocked games + playtime
 
   // Menu order: games you BOUGHT first (newest purchase first), then free games.
   const boughtFirst = owned
     .map((key) => GAMES.find((g) => g.key === key))
     .filter(Boolean)
   const freeGames = GAMES.filter(
-    (g) => canPlay(g.key, owned) && !owned.includes(g.key)
+    (g) => canPlay(g.key, owned, playtime) && !owned.includes(g.key)
   )
   const orderedGames = [...boughtFirst, ...freeGames]
 
@@ -83,6 +84,10 @@ function App() {
 
   if (activeGame === 'admin') {
     return <AdminPlayers onBack={() => setActiveGame(null)} />
+  }
+
+  if (activeGame === 'muffin') {
+    return <MuffinClicker onBack={() => setActiveGame(null)} />
   }
 
   return (

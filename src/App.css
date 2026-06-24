@@ -1189,3 +1189,133 @@
   color: #f87171;
   font-size: 12px;
 }
+
+/* === Time-unlocked game (Muffin Clicker progress) === */
+.timegame {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: min(360px, 92vw);
+  margin: 18px auto 0;
+  padding: 18px;
+  border: 1px solid var(--accent-border);
+  border-radius: 14px;
+  background: var(--accent-bg);
+}
+.timegame-title {
+  font-family: var(--heading);
+  font-size: 16px;
+  color: var(--text-h);
+  letter-spacing: 1px;
+}
+.timegame-sub {
+  font-size: 13px;
+  color: var(--text);
+}
+.timebar {
+  width: 100%;
+  height: 14px;
+  border-radius: 8px;
+  background: #0b1020;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.timebar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width 0.4s;
+}
+
+/* === Muffin Clicker === */
+.muffin-count {
+  font-family: var(--heading);
+  font-size: 30px;
+  color: var(--text-h);
+}
+.muffin-mps {
+  font-family: var(--heading);
+  color: var(--accent);
+  font-size: 16px;
+  margin-top: -4px;
+}
+.muffin-big {
+  font-size: 120px;
+  line-height: 1;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 10px;
+  filter: drop-shadow(0 6px 18px rgba(168, 85, 247, 0.4));
+  transition: transform 0.06s;
+  user-select: none;
+}
+.muffin-big:hover {
+  transform: scale(1.04);
+}
+.muffin-big:active {
+  transform: scale(0.9);
+}
+.muffin-shop {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(420px, 92vw);
+  margin: 8px auto 0;
+}
+.muffin-buy {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--text-h);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, transform 0.1s;
+}
+.muffin-buy:hover:not(:disabled) {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+.muffin-buy:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.muffin-buy-emoji {
+  font-size: 30px;
+}
+.muffin-buy-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+.muffin-buy-name {
+  font-family: var(--heading);
+  font-size: 15px;
+  letter-spacing: 0.5px;
+}
+.muffin-buy-sub {
+  font-size: 13px;
+  color: var(--text);
+}
+.muffin-buy-cost {
+  font-family: var(--heading);
+  color: #fcd34d;
+  font-size: 15px;
+  white-space: nowrap;
+}
+.muffin-head {
+  font-family: var(--heading);
+  color: var(--text-h);
+  font-size: 16px;
+  letter-spacing: 1px;
+  margin: 18px 0 0;
+}
+.muffin-offline {
+  font-family: var(--heading);
+  color: var(--accent);
+  font-size: 15px;
+}
