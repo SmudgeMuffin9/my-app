@@ -11,6 +11,7 @@ import SplitBrain from './SplitBrain'
 import GravityFlip from './GravityFlip'
 import SmudgeWipe from './SmudgeWipe'
 import SmudgeSurvivors from './SmudgeSurvivors'
+import SmudgeDefense from './SmudgeDefense'
 import AuthBar from './AuthBar'
 import Leaderboards from './Leaderboards'
 import Shop from './Shop'
@@ -38,7 +39,7 @@ function App() {
     .map((key) => GAMES.find((g) => g.key === key))
     .filter(Boolean)
   const freeGames = GAMES.filter(
-    (g) => canPlay(g.key, owned, playtime) && !owned.includes(g.key)
+    (g) => canPlay(g.key, owned, playtime, isOwner(username)) && !owned.includes(g.key)
   )
   const orderedGames = [...boughtFirst, ...freeGames]
 
@@ -84,6 +85,10 @@ function App() {
 
   if (activeGame === 'survivor') {
     return <SmudgeSurvivors onBack={() => setActiveGame(null)} />
+  }
+
+  if (activeGame === 'defense') {
+    return <SmudgeDefense onBack={() => setActiveGame(null)} />
   }
 
   if (activeGame === 'leaderboards') {

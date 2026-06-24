@@ -13,6 +13,7 @@ export const GAMES = [
   { key: 'smudge', name: 'Smudge Wipe', emoji: '🧽' },
   { key: 'muffin', name: 'Muffin Clicker', emoji: '🧁' },
   { key: 'survivor', name: 'Smudge Survivors', emoji: '🧟' },
+  { key: 'defense', name: 'Smudge Defense', emoji: '🏰' },
 ]
 
 // The games you must BUY in the shop. Everything else is free.
@@ -20,15 +21,18 @@ export const GAMES = [
 export const LOCKED = new Set(['shoot', 'snake', 'gravity', 'smudge', 'split'])
 
 // Games unlocked by TIME PLAYED instead of coins. Value = seconds required.
-export const TIME_LOCKED = { muffin: 1800 } // 1800s = 30 minutes
+export const TIME_LOCKED = {
+  muffin: 1800,   // 30 minutes
+  defense: 3600,  // 1 hour — earn the big tower-defense game by grinding
+}
 
 export const isLocked = (key) => LOCKED.has(key) || key in TIME_LOCKED
 
 // Can the player open this game?
-// - time-locked games: only after enough playtime
+// - time-locked games: only after enough playtime (owner can always open them)
 // - coin-locked games: only if owned
 // - everything else: free, always
-export const canPlay = (key, owned, playtime = 0) => {
-  if (TIME_LOCKED[key] != null) return playtime >= TIME_LOCKED[key]
+export const canPlay = (key, owned, playtime = 0, owner = false) => {
+  if (TIME_LOCKED[key] != null) return owner || playtime >= TIME_LOCKED[key]
   return !LOCKED.has(key) || owned.includes(key)
 }

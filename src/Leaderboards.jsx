@@ -4,6 +4,7 @@ import CoinsLeaderboard from './CoinsLeaderboard'
 // every game that has a score, with the right sort direction
 const GAMES = [
   { game: 'survivor', title: '🧟 Smudge Survivors', unit: ' kills' },
+  { game: 'defense', title: '🏰 Smudge Defense', unit: ' waves' },
   { game: 'snake', title: '🐍 Snake' },
   { game: 'whack', title: '🔨 Whack-a-Mole' },
   { game: 'split', title: '🧠 Split Brain', unit: ' pts' },
