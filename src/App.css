@@ -1168,12 +1168,38 @@
 }
 .admin-row {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  gap: 8px;
   padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--social-bg);
+}
+.admin-row-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.admin-games {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-left: 2px;
+}
+.admin-game-chip {
+  font-family: var(--sans);
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--text-h);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.admin-game-chip:hover {
+  border-color: #f87171;
+  background: rgba(248, 113, 113, 0.12);
 }
 .admin-name {
   flex: 1;

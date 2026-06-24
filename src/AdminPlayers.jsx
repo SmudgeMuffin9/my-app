@@ -2,27 +2,40 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabase'
 import { useAuth } from './auth'
 import { isOwner } from './owner'
+import { GAMES } from './games'
 
-// OWNER-ONLY page: see every player + their coins, set anyone's balance,
-// and ban/unban players. Coin + ban changes go through owner-only database
-// rules, so the real protection is server-side (the buttons are convenience).
+const gameLabel = (key) => {
+  const g = GAMES.find((x) => x.key === key)
+  return g ? `${g.emoji} ${g.name}` : key
+}
+
+// OWNER-ONLY page: see every player + their coins, set balances, ban/unban,
+// and remove games they own. All backed by owner-only database rules.
 function AdminPlayers({ onBack }) {
   const { username, reloadProfile } = useAuth()
-  const [players, setPlayers] = useState([])
+  const [players, setPlayers] = useState([]) // { id, username, coins }
+  const [unlocks, setUnlocks] = useState([]) // { user_id, game }
   const [banned, setBanned] = useState([]) // lowercased banned usernames
-  const [edits, setEdits] = useState({}) // username -> the number typed in its box
+  const [edits, setEdits] = useState({}) // username -> number typed
   const [error, setError] = useState(null)
   const [msg, setMsg] = useState(null)
 
   const loadPlayers = useCallback(() => {
     supabase
       .from('profiles')
-      .select('username, coins')
+      .select('id, username, coins')
       .order('coins', { ascending: false })
       .then(({ data, error }) => {
         if (error) setError(error.message)
         else setPlayers(data ?? [])
       })
+  }, [])
+
+  const loadUnlocks = useCallback(() => {
+    supabase
+      .from('unlocks')
+      .select('user_id, game')
+      .then(({ data }) => setUnlocks(data ?? []))
   }, [])
 
   const loadBans = useCallback(() => {
@@ -34,10 +47,10 @@ function AdminPlayers({ onBack }) {
 
   useEffect(() => {
     loadPlayers()
+    loadUnlocks()
     loadBans()
-  }, [loadPlayers, loadBans])
+  }, [loadPlayers, loadUnlocks, loadBans])
 
-  // hard stop: this page is owner-only (the database also blocks non-owners)
   if (!isOwner(username)) {
     return (
       <section id="center">
@@ -55,10 +68,7 @@ function AdminPlayers({ onBack }) {
       return
     }
     setMsg(null)
-    const { error } = await supabase.rpc('set_coins', {
-      p_username: name,
-      p_amount: amount,
-    })
+    const { error } = await supabase.rpc('set_coins', { p_username: name, p_amount: amount })
     if (error) {
       setMsg(`⚠️ ${error.message}`)
       return
@@ -66,7 +76,23 @@ function AdminPlayers({ onBack }) {
     setMsg(`✅ Set ${name} to ${amount} 🪙`)
     setEdits((e) => ({ ...e, [name]: '' }))
     loadPlayers()
-    reloadProfile() // refresh MY menu-bar balance if I edited my own coins
+    reloadProfile()
+  }
+
+  async function removeGame(playerId, game, name) {
+    if (!window.confirm(`Remove ${gameLabel(game)} from ${name}?`)) return
+    setMsg(null)
+    const { error } = await supabase
+      .from('unlocks')
+      .delete()
+      .eq('user_id', playerId)
+      .eq('game', game)
+    if (error) {
+      setMsg(`⚠️ ${error.message}`)
+      return
+    }
+    setMsg(`🗑️ Removed ${gameLabel(game)} from ${name}`)
+    loadUnlocks()
   }
 
   async function ban(name) {
@@ -77,7 +103,7 @@ function AdminPlayers({ onBack }) {
       setMsg(`⚠️ ${banErr.message}`)
       return
     }
-    await supabase.from('scores').delete().eq('name', name) // wipe their scores
+    await supabase.from('scores').delete().eq('name', name)
     setMsg(`🚫 Banned ${name}`)
     loadBans()
   }
@@ -105,40 +131,58 @@ function AdminPlayers({ onBack }) {
       <div className="admin-list">
         {players.map((p) => {
           const isBanned = banned.includes(p.username.toLowerCase())
+          const myGames = unlocks.filter((u) => u.user_id === p.id).map((u) => u.game)
           return (
             <div key={p.username} className={`admin-row ${isBanned ? 'banned' : ''}`}>
-              <span className={`admin-name ${isOwner(p.username) ? 'owner' : ''}`}>
-                {isOwner(p.username) ? `🔨 ${p.username}` : p.username}
-                {isBanned && <span className="admin-banned-tag"> 🚫 banned</span>}
-              </span>
-              <span className="admin-coins">🪙 {p.coins}</span>
-              <input
-                className="lb-input admin-input"
-                type="number"
-                min="0"
-                placeholder="set…"
-                value={edits[p.username] ?? ''}
-                onChange={(e) =>
-                  setEdits((s) => ({ ...s, [p.username]: e.target.value }))
-                }
-              />
-              <button className="play-btn admin-set" onClick={() => setCoins(p.username)}>
-                Set
-              </button>
-              {!isOwner(p.username) &&
-                (isBanned ? (
-                  <button className="play-btn admin-set" onClick={() => unban(p.username)}>
-                    Unban
-                  </button>
-                ) : (
-                  <button
-                    className="lb-del admin-ban"
-                    onClick={() => ban(p.username)}
-                    title={`Ban ${p.username}`}
-                  >
-                    🚫
-                  </button>
-                ))}
+              <div className="admin-row-top">
+                <span className={`admin-name ${isOwner(p.username) ? 'owner' : ''}`}>
+                  {isOwner(p.username) ? `🔨 ${p.username}` : p.username}
+                  {isBanned && <span className="admin-banned-tag"> 🚫 banned</span>}
+                </span>
+                <span className="admin-coins">🪙 {p.coins}</span>
+                <input
+                  className="lb-input admin-input"
+                  type="number"
+                  min="0"
+                  placeholder="set…"
+                  value={edits[p.username] ?? ''}
+                  onChange={(e) =>
+                    setEdits((s) => ({ ...s, [p.username]: e.target.value }))
+                  }
+                />
+                <button className="play-btn admin-set" onClick={() => setCoins(p.username)}>
+                  Set
+                </button>
+                {!isOwner(p.username) &&
+                  (isBanned ? (
+                    <button className="play-btn admin-set" onClick={() => unban(p.username)}>
+                      Unban
+                    </button>
+                  ) : (
+                    <button
+                      className="lb-del admin-ban"
+                      onClick={() => ban(p.username)}
+                      title={`Ban ${p.username}`}
+                    >
+                      🚫
+                    </button>
+                  ))}
+              </div>
+
+              {myGames.length > 0 && (
+                <div className="admin-games">
+                  {myGames.map((g) => (
+                    <button
+                      key={g}
+                      className="admin-game-chip"
+                      onClick={() => removeGame(p.id, g, p.username)}
+                      title={`Remove ${gameLabel(g)}`}
+                    >
+                      {gameLabel(g)} ✕
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )
         })}
