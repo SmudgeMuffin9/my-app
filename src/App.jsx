@@ -16,6 +16,7 @@ import Shop from './Shop'
 import AdminPlayers from './AdminPlayers'
 import MuffinClicker from './MuffinClicker'
 import { useAuth } from './auth'
+import { supabase } from './supabase'
 import { isOwner } from './owner'
 import { GAMES, canPlay } from './games'
 import './App.css'
@@ -23,7 +24,13 @@ import './App.css'
 function App() {
   // Which game is open right now? null = show the menu.
   const [activeGame, setActiveGame] = useState(null)
-  const { username, owned, playtime } = useAuth() // username + unlocked games + playtime
+  const { username, owned, playtime, reloadProfile } = useAuth()
+
+  // owner cheat: max out my own coins (set_coins is owner-only on the server)
+  async function maxCoins() {
+    await supabase.rpc('set_coins', { p_username: username, p_amount: 1000000000 })
+    reloadProfile()
+  }
 
   // Menu order: games you BOUGHT first (newest purchase first), then free games.
   const boughtFirst = owned
@@ -119,6 +126,11 @@ function App() {
         {isOwner(username) && (
           <button className="play-btn" onClick={() => setActiveGame('admin')}>
             🔨 Players
+          </button>
+        )}
+        {isOwner(username) && (
+          <button className="play-btn" onClick={maxCoins}>
+            💰 Max Coins
           </button>
         )}
       </div>

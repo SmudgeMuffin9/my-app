@@ -1,4 +1,5 @@
 import Leaderboard from './Leaderboard'
+import CoinsLeaderboard from './CoinsLeaderboard'
 
 // every game that has a score, with the right sort direction
 const GAMES = [
@@ -19,6 +20,7 @@ function Leaderboards({ onBack }) {
       <button className="back-btn" onClick={onBack}>← Menu</button>
       <h1>🏆 Leaderboards</h1>
       <div className="lb-grid">
+        <CoinsLeaderboard />
         {GAMES.map((g) => (
           <Leaderboard key={g.game} {...g} />
         ))}
