@@ -6,20 +6,16 @@ import UsernamePicker from './UsernamePicker'
 
 function AuthBar() {
   const { user, username, coins } = useAuth()
-  const [email, setEmail] = useState('')
-  const [open, setOpen] = useState(false)
-  const [sent, setSent] = useState(false)
   const [error, setError] = useState(null)
 
-  async function sendLink(e) {
-    e.preventDefault()
+  // send the player to Google to sign in, then back to our site
+  async function signInWithGoogle() {
     setError(null)
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: { emailRedirectTo: window.location.origin },
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
     })
     if (error) setError(error.message)
-    else setSent(true)
   }
 
   async function signOut() {
@@ -49,27 +45,13 @@ function AuthBar() {
     )
   }
 
-  // logged out
+  // logged out → one-click Google sign in
   return (
     <div className="authbar">
-      {!open ? (
-        <button className="auth-link" onClick={() => setOpen(true)}>🔐 Sign in</button>
-      ) : sent ? (
-        <span className="auth-sent">📧 Check your email for the login link!</span>
-      ) : (
-        <form className="auth-form" onSubmit={sendLink}>
-          <input
-            className="lb-input"
-            type="email"
-            required
-            placeholder="your email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <button className="play-btn" type="submit">Send link</button>
-          {error && <span className="lb-error">⚠️ {error}</span>}
-        </form>
-      )}
+      <button className="google-btn" onClick={signInWithGoogle}>
+        <span className="google-g">G</span> Sign in with Google
+      </button>
+      {error && <span className="lb-error">⚠️ {error}</span>}
     </div>
   )
 }

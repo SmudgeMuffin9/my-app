@@ -1051,6 +1051,30 @@
   color: #fcd34d; /* gold */
   letter-spacing: 0.5px;
 }
+.google-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--heading);
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--accent-border);
+  background: #fff;
+  color: #1f2937;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.google-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.4);
+}
+.google-g {
+  font-family: var(--heading);
+  font-weight: 900;
+  color: #4285f4; /* Google blue */
+}
 .menu-actions {
   display: flex;
   gap: 12px;
