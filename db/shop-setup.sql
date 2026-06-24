@@ -45,6 +45,9 @@ create policy "owner sees all unlocks" on unlocks for select
   using (lower((select username from profiles where id = auth.uid())) = 'smudgemuffin');
 create policy "owner removes unlocks" on unlocks for delete
   using (lower((select username from profiles where id = auth.uid())) = 'smudgemuffin');
+-- owner can GIVE any player any game (the 🎁 button on the Players admin page)
+create policy "owner adds unlocks" on unlocks for insert
+  with check (lower((select username from profiles where id = auth.uid())) = 'smudgemuffin');
 
 -- 4) EXCHANGE RATES: how a game's score turns into Smudge's.
 --    rate = coins per point. lower_better games (smaller score = better)

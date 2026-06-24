@@ -1582,3 +1582,10 @@
   }
   .def-tower-name { font-size: 9px; text-align: center; }
 }
+
+/* owner "give game" dropdown on the Players page */
+.admin-give {
+  font-size: 13px;
+  padding: 4px 8px;
+  cursor: pointer;
+}

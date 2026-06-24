@@ -2,7 +2,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabase'
 import { useAuth } from './auth'
 import { isOwner } from './owner'
-import { GAMES } from './games'
+import { GAMES, GRANTABLE } from './games'
+
+// games the owner can hand out (locked ones), in menu order
+const GRANT_LIST = GAMES.filter((g) => GRANTABLE(g.key))
 
 const gameLabel = (key) => {
   const g = GAMES.find((x) => x.key === key)
@@ -77,6 +80,19 @@ function AdminPlayers({ onBack }) {
     setEdits((e) => ({ ...e, [name]: '' }))
     loadPlayers()
     reloadProfile()
+  }
+
+  async function giveGame(playerId, game, name) {
+    setMsg(null)
+    const { error } = await supabase
+      .from('unlocks')
+      .insert({ user_id: playerId, game })
+    if (error) {
+      setMsg(`⚠️ ${error.message}`)
+      return
+    }
+    setMsg(`🎁 Gave ${gameLabel(game)} to ${name}`)
+    loadUnlocks()
   }
 
   async function removeGame(playerId, game, name) {
@@ -169,20 +185,33 @@ function AdminPlayers({ onBack }) {
                   ))}
               </div>
 
-              {myGames.length > 0 && (
-                <div className="admin-games">
-                  {myGames.map((g) => (
-                    <button
-                      key={g}
-                      className="admin-game-chip"
-                      onClick={() => removeGame(p.id, g, p.username)}
-                      title={`Remove ${gameLabel(g)}`}
-                    >
-                      {gameLabel(g)} ✕
-                    </button>
+              <div className="admin-games">
+                {myGames.map((g) => (
+                  <button
+                    key={g}
+                    className="admin-game-chip"
+                    onClick={() => removeGame(p.id, g, p.username)}
+                    title={`Remove ${gameLabel(g)}`}
+                  >
+                    {gameLabel(g)} ✕
+                  </button>
+                ))}
+                {/* give a locked game they don't already have */}
+                <select
+                  className="lb-input admin-give"
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) giveGame(p.id, e.target.value, p.username)
+                  }}
+                >
+                  <option value="">🎁 give game…</option>
+                  {GRANT_LIST.filter((g) => !myGames.includes(g.key)).map((g) => (
+                    <option key={g.key} value={g.key}>
+                      {g.emoji} {g.name}
+                    </option>
                   ))}
-                </div>
-              )}
+                </select>
+              </div>
             </div>
           )
         })}

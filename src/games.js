@@ -28,11 +28,15 @@ export const TIME_LOCKED = {
 
 export const isLocked = (key) => LOCKED.has(key) || key in TIME_LOCKED
 
+// Every game the owner can grant from the Players page (coin-locked + time-locked).
+export const GRANTABLE = (key) => LOCKED.has(key) || key in TIME_LOCKED
+
 // Can the player open this game?
-// - time-locked games: only after enough playtime (owner can always open them)
-// - coin-locked games: only if owned
-// - everything else: free, always
+// - owned (bought OR owner-gifted): always — this also unlocks time-locked games
+// - time-locked games: after enough playtime (owner can always open them)
+// - coin-locked games: only if owned (handled above); everything else: free
 export const canPlay = (key, owned, playtime = 0, owner = false) => {
+  if (owned.includes(key)) return true
   if (TIME_LOCKED[key] != null) return owner || playtime >= TIME_LOCKED[key]
-  return !LOCKED.has(key) || owned.includes(key)
+  return !LOCKED.has(key)
 }

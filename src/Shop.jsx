@@ -93,7 +93,7 @@ function Shop({ onBack }) {
         const need = TIME_LOCKED[key]
         const have = Math.min(playtime, need)
         const pct = Math.round((have / need) * 100)
-        const unlocked = playtime >= need
+        const unlocked = playtime >= need || owned.includes(key)
         const mins = (s) => Math.floor(s / 60)
         return (
           <div key={key} className="timegame">
