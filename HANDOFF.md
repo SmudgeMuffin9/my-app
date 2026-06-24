@@ -43,7 +43,7 @@ curl -s "https://smudgegames.vercel.app$JS" | grep -o "<some new string>"
   GitHub — that's why `cpd` runs `vercel --prod` manually)
 - Google Fonts: **Orbitron** (headings) + **Rajdhani** (body), in `index.html`
 
-## The games (11)
+## The games (13)
 All in `src/`, each rendered by `App.jsx` based on the `activeGame` state.
 | Game | File | `game` key | Score | Unlock |
 |------|------|-----------|-------|--------|
@@ -58,11 +58,16 @@ All in `src/`, each rendered by `App.jsx` based on the `activeGame` state.
 | Smudge Wipe | `SmudgeWipe.jsx` | `smudge` | smudges wiped | 🔒 buy 20,000 |
 | Split Brain | `SplitBrain.jsx` | `split` | points (10/sec) | 🔒 buy 40,000 |
 | Muffin Clicker | `MuffinClicker.jsx` | `muffin` | (its own muffins) | ⏱️ 30 min playtime |
+| Smudge Survivors | `SmudgeSurvivors.jsx` | `survivor` | kills | free |
+| Smudge Defense | `SmudgeDefense.jsx` | `defense` | waves cleared | ⏱️ 1 hr playtime |
 
 - **Gravity Flip & Smudge Wipe** are ORIGINAL games (not clones). Gravity Flip:
   tap/Space flips gravity, dodge floor/ceiling blocks; you can only flip while
   stuck to a surface (kills a spam-to-float exploit). Smudge Wipe: tap growing
   smudges before one reaches `MAX_R`.
+- **Smudge Survivors & Smudge Defense** are also ORIGINAL, and bigger (each has
+  its own section below). Both render to a `<canvas>` (a single drawing surface
+  the game repaints ~60×/sec) instead of divs — better for many moving objects.
 - **Muffin Clicker** is a Cookie-Clicker-style idle game (see its own section).
 - The free/locked split lives in `src/games.js` (`LOCKED` set + `TIME_LOCKED`).
   Prices live in the **database** (`game_prices` table), not the code.
@@ -110,6 +115,32 @@ so cheating is blocked server-side. Full SQL: `db/shop-setup.sql`.
 - **Saves to `muffin_saves`** every 8s + on leave, and gives **offline earnings**
   (capped 8h) when you return. This is the only game that persists full state.
 
+## Smudge Survivors (`SmudgeSurvivors.jsx`)
+A top-down survival game. You're a dot; move with WASD/arrows or drag on mobile.
+You **auto-shoot** the nearest enemy — the skill is dodging. Score = kills.
+- Every few kills you **level up** and pick 1 of 3 upgrades (fire rate, damage,
+  extra bullet, move speed, +health, piercing) — that's the "build" hook.
+- **Anti-camp design (don't undo this):** enemies toughen up forever with time,
+  the multishot fan is a tight cone (not a 360° spray), and every ~16s a **wave
+  surge** spawns a full ring of enemies around you. Together these force you to
+  *kite* (keep moving) instead of standing still — an earlier version let you
+  camp dead-center and never die. Tuning knobs are at the top of the file.
+
+## Smudge Defense (`SmudgeDefense.jsx`)
+A fixed-path tower defense. Enemies walk a set road (`CORNERS` → `WAYPOINTS`) to
+your 🏠; ones that arrive cost a life. Build towers on buildable cells for money.
+Endless waves (press Start Wave), boss every 5th. Score = waves cleared.
+- **30 towers** in one `TOWERS` array, built from a small set of "powers" mixed
+  + matched: dmg/range/cooldown, `slow`, `dotDps` (poison), `splash`, `beam` +
+  `chain` (lightning), `stun`, `knock`, `income` (money makers, `shoot:false`),
+  and `aura` (buff towers, `shoot:false`). Add a tower = add one row.
+- The tray is **sorted by cost** at render. Tap a tower type then an empty cell
+  to build; tap a PLACED tower (nothing selected) to pick it up → **move** it
+  free or **sell** for 75% back.
+- **Income towers only earn during an active wave** (no idle farming).
+- **Time-locked at 1 hour** of playtime (`TIME_LOCKED.defense = 3600`). The
+  Shop progress bar + menu hiding are automatic (see the time-lock note below).
+
 ## Owner / admin powers
 `owner.js` defines `OWNER = 'smudgemuffin'`; `isOwner(name)` is case-insensitive.
 Owner-only UI is hidden for everyone else, but the REAL guard is always a
@@ -120,6 +151,9 @@ database rule (so it can't be bypassed).
 - **💰 Max Coins button** (menu, owner-only): sets own coins to 1,000,000,000.
 - **Banning:** adds to `bans` + wipes their scores; restrictive policies then
   block banned users from posting. Unban = delete their `bans` row.
+- **Time-lock bypass:** `canPlay(key, owned, playtime, owner)` takes an `owner`
+  flag (passed `isOwner(username)` from `App.jsx`). The owner can always open
+  TIME_LOCKED games (Muffin, Defense) without the playtime, so they can test.
 
 ## Supabase setup
 - **Project ref:** `rpptipltsmafmcetofyd` (`https://rpptipltsmafmcetofyd.supabase.co`)
@@ -169,6 +203,12 @@ database rule (so it can't be bypassed).
   game-over screen (`ScoreSaver`) and the 🏆 Leaderboards tab (`Leaderboards.jsx`).
 - Leaderboards tab also has a **🪙 Top Coins** board (`CoinsLeaderboard.jsx`,
   reads `profiles` by coins).
+- **`ErrorBoundary.jsx`** wraps the whole app (in `main.jsx`). If any game
+  crashes, it shows a readable "💥 Oops" message + a recover button instead of a
+  blank white screen. Handy for debugging — the real error also logs to console.
+- **Canvas games** (Survivors, Defense) use a `requestAnimationFrame` loop +
+  refs for game state, and only `setHud(...)` per frame for the on-screen
+  numbers (the loop effect's only dep is `phase`, so it doesn't restart).
 
 ## Known quirks (intentional)
 - Reaction Time accepts impossibly-fast times; Keaton (owner) keeps a **3 ms**
@@ -178,7 +218,7 @@ database rule (so it can't be bypassed).
 - Vercel does NOT auto-deploy from GitHub; deploys are manual via `vercel --prod`.
 
 ## Ideas / next steps
-- Goal is ~30 minigames (at 11). Keaton prefers ORIGINAL games over clones.
+- Goal is ~30 minigames (at 13). Keaton prefers ORIGINAL games over clones.
 - Muffin Clicker stage 3+ ideas: more buildings, golden-muffin bonuses, prestige.
 - Calibrate coin rates for Snake/Gravity/Split/Smudge once people actually play
   them (some `coin_rates` were tuned by guessing the typical score).
