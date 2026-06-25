@@ -13,7 +13,12 @@ function AuthBar() {
     setError(null)
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      options: {
+        redirectTo: window.location.origin,
+        // always show Google's "choose an account" screen, so a person can
+        // switch accounts instead of being auto-logged-in as the last one
+        queryParams: { prompt: 'select_account' },
+      },
     })
     if (error) setError(error.message)
   }

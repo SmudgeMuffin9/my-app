@@ -79,7 +79,7 @@ const TOWERS = [
   { id: 'scorpion',emoji: '🦂', name: 'Scorpion',   cost: 260, color: '#65a30d', dmg: 2,  cooldown: 0.7,  range: 95, dotDps: 12, dotTime: 3 },
   { id: 'rocket',  emoji: '🚀', name: 'Rocket',     cost: 260, color: '#fb7185', dmg: 14, cooldown: 1.8,  range: 120, splash: 45 },
   { id: 'storm',   emoji: '🌩️', name: 'Storm',      cost: 300, color: '#818cf8', dmg: 5,  cooldown: 0.9,  range: 100, beam: true, chain: 5, chainRange: 85 },
-  { id: 'gravity', emoji: '🪐', name: 'Gravity',    cost: 320, color: '#c084fc', dmg: 2,  cooldown: 1.0,  range: 100, slowMul: 0.25, slowTime: 2.5, splash: 40 },
+  { id: 'gravity', emoji: '🪐', name: 'Gravity',    cost: 320, color: '#c084fc', dmg: 2,  cooldown: 1.0,  range: 100, slowMul: 0.25, slowTime: 2.5, pulse: true },
   { id: 'prism',   emoji: '🌟', name: 'Prism',      cost: 340, color: '#5eead4', dmg: 6,  cooldown: 0.8,  range: 110, beam: true, chain: 4, chainRange: 80, slowMul: 0.6, slowTime: 1.2 },
   { id: 'plague',  emoji: '🦠', name: 'Plague',     cost: 360, color: '#a3e635', dmg: 2,  cooldown: 1.1,  range: 95, dotDps: 16, dotTime: 4, splash: 45 },
   { id: 'railgun', emoji: '🛰️', name: 'Railgun',    cost: 350, color: '#f43f5e', dmg: 30, cooldown: 2.4,  range: 200, beam: true },
@@ -90,7 +90,7 @@ const TOWERS = [
   { id: 'meteor',  emoji: '☄️', name: 'Meteor',     cost: 500, color: '#fdba74', dmg: 40, cooldown: 2.8,  range: 130, splash: 70 },
   { id: 'dragon',  emoji: '🐉', name: 'Dragon',     cost: 600, color: '#4ade80', dmg: 8,  cooldown: 0.4,  range: 120, dotDps: 20, dotTime: 2, splash: 40 },
   { id: 'overseer',emoji: '👁️', name: 'Overseer',   cost: 550, color: '#f472b6', shoot: false, range: 120, aura: { range: 120, dmgMul: 1.8, fireMul: 1.4 } },
-  { id: 'doomsday',emoji: '🏆', name: 'Doomsday',   cost: 1000, color: '#fafafa', dmg: 60, cooldown: 3.0, range: 220, beam: true, splash: 80 },
+  { id: 'doomsday',emoji: '🏆', name: 'Doomsday',   cost: 1000, color: '#fafafa', dmg: 40, cooldown: 3.0, range: 220, beam: true, splash: 80 },
 ]
 const towerById = (id) => TOWERS.find((t) => t.id === id)
 const previewRange = (t) => t.range || (t.aura ? t.aura.range : 0)
@@ -113,6 +113,7 @@ function describe(t) {
   if (t.dotDps) fx.push(`poison ${t.dotDps}/s for ${t.dotTime}s`)
   if (t.stun) fx.push(`stuns ${t.stun}s`)
   if (t.knock) fx.push('knocks enemies back')
+  if (t.pulse) fx.push('pulses — hits EVERY enemy in range')
   let s = `${head} every ${t.cooldown}s · ${t.range}px range.`
   if (fx.length) s += ` ${fx.join(', ')}.`
   return s
@@ -130,10 +131,11 @@ const HARD_LIVES = 10
 // (coin_rates.defense rate = 8, and award_coins caps each play at 1500).
 // The server is still the real source of truth — this is just the on-screen estimate.
 const COIN_RATE = 8         // normal Defense: Smudge's per wave (mirrors coin_rates.defense)
-const HARD_COIN_RATE = 24   // hardcore Defense: 3× the normal rate (mirrors coin_rates.defense_hard)
-const COIN_CAP = 1500
+const HARD_COIN_RATE = 200  // hardcore Defense: 25× the normal rate (mirrors coin_rates.defense_hard)
+// Tower Defense has NO payout cap (coin_rates.cap is NULL for defense/defense_hard),
+// so long runs keep earning. Other games still cap at 1500 server-side.
 const coinsFor = (wavesCleared, hardcore = false) =>
-  Math.min(COIN_CAP, Math.max(0, wavesCleared) * (hardcore ? HARD_COIN_RATE : COIN_RATE))
+  Math.max(0, wavesCleared) * (hardcore ? HARD_COIN_RATE : COIN_RATE)
 
 // Difficulty is a STEADY CLIMB: every value grows smoothly with the wave number
 // (no sudden exponential spikes), but the slopes are steep enough that late waves
@@ -173,6 +175,7 @@ function freshWorld(hardcore = false) {
     towers: [],
     bullets: [],
     beams: [],     // short-lived laser/lightning lines to draw
+    fx: [],        // short-lived flashes/rings (muzzle, impacts, splash shockwaves)
     nextId: 1,
     dead: false,
   }
@@ -198,6 +201,48 @@ function splashHit(w, eff, x, y, exclude) {
     if (e === exclude || e.hp <= 0) continue
     if ((e.x - x) ** 2 + (e.y - y) ** 2 <= eff.splash * eff.splash) applyHit(e, eff)
   }
+}
+// ---- visual effects (pure eye-candy: pushed into w.fx, drawn + faded each frame) ----
+// a bright flash at the tower barrel when it fires
+function addMuzzle(w, tw) {
+  w.fx.push({ x: tw.x, y: tw.y, r0: 13, r1: 5, ttl: 0.16, max: 0.16, color: tw.color, fill: true })
+}
+// a spark ring where a shot lands; if splashR is set, also a big shockwave ring
+function addImpact(w, x, y, color, splashR) {
+  w.fx.push({ x, y, r0: 2, r1: 13, ttl: 0.2, max: 0.2, color, fill: false })
+  if (splashR) w.fx.push({ x, y, r0: 6, r1: splashR, ttl: 0.3, max: 0.3, color, fill: false })
+}
+// a jagged, flickering lightning bolt with a glow + bright white core (chain towers)
+function drawBolt(ctx, bm) {
+  const segs = 6
+  const dx = bm.x2 - bm.x1, dy = bm.y2 - bm.y1
+  const len = Math.hypot(dx, dy) || 1
+  const nx = -dy / len, ny = dx / len     // perpendicular, for the zig-zag
+  const pts = [[bm.x1, bm.y1]]
+  for (let i = 1; i < segs; i++) {
+    const t = i / segs
+    const j = (Math.random() - 0.5) * 14   // random kink each frame = electric flicker
+    pts.push([bm.x1 + dx * t + nx * j, bm.y1 + dy * t + ny * j])
+  }
+  pts.push([bm.x2, bm.y2])
+  const trace = () => {
+    ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1])
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1])
+    ctx.stroke()
+  }
+  ctx.strokeStyle = bm.color; ctx.shadowColor = bm.color; ctx.shadowBlur = 10; ctx.lineWidth = 4
+  trace()
+  ctx.strokeStyle = '#ffffff'; ctx.shadowBlur = 0; ctx.lineWidth = 1.5
+  trace()
+}
+// a straight glowing beam: thick for "heavy" towers, thin for plain lasers
+function drawBeamLine(ctx, bm) {
+  const heavy = bm.style === 'heavy'
+  ctx.strokeStyle = bm.color; ctx.shadowColor = bm.color; ctx.shadowBlur = heavy ? 14 : 8
+  ctx.lineWidth = heavy ? 6 : 3
+  ctx.beginPath(); ctx.moveTo(bm.x1, bm.y1); ctx.lineTo(bm.x2, bm.y2); ctx.stroke()
+  ctx.strokeStyle = '#ffffff'; ctx.shadowBlur = 0; ctx.lineWidth = heavy ? 2 : 1
+  ctx.beginPath(); ctx.moveTo(bm.x1, bm.y1); ctx.lineTo(bm.x2, bm.y2); ctx.stroke()
 }
 // build the "what this hit does" packet from a tower (dmg already buffed by auras)
 function effectOf(t, dmg) {
@@ -314,11 +359,23 @@ function SmudgeDefense({ onBack }) {
         if (!pick) continue
         const eff = effectOf(tw, eff0.dmg)
 
-        if (tw.beam) {
-          // instant laser/lightning
+        if (tw.pulse) {
+          // gravity well: pull/slow EVERY enemy inside the tower's whole radius
+          addMuzzle(w, tw)
+          for (const e of w.enemies) {
+            if (e.hp <= 0) continue
+            if ((e.x - tw.x) ** 2 + (e.y - tw.y) ** 2 <= eff0.range ** 2) applyHit(e, eff)
+          }
+          // a big ring sweeping out to the full radius = the pulse you can see
+          w.fx.push({ x: tw.x, y: tw.y, r0: 8, r1: eff0.range, ttl: 0.35, max: 0.35, color: tw.color, fill: false })
+        } else if (tw.beam) {
+          // instant laser/lightning — chain towers crackle, big hitters fire thick beams
+          const style = tw.chain ? 'bolt' : (tw.splash || tw.dmg >= 12 ? 'heavy' : 'laser')
+          addMuzzle(w, tw)
           applyHit(pick, eff)
           if (eff.splash) splashHit(w, eff, pick.x, pick.y, pick)
-          w.beams.push({ x1: tw.x, y1: tw.y, x2: pick.x, y2: pick.y, color: tw.color, ttl: 0.09 })
+          w.beams.push({ x1: tw.x, y1: tw.y, x2: pick.x, y2: pick.y, color: tw.color, ttl: 0.12, style })
+          addImpact(w, pick.x, pick.y, tw.color, eff.splash)
           if (tw.chain) {
             let last = pick
             const hit = new Set([pick.id])
@@ -331,13 +388,15 @@ function SmudgeDefense({ onBack }) {
               }
               if (!next) break
               applyHit(next, eff)
-              w.beams.push({ x1: last.x, y1: last.y, x2: next.x, y2: next.y, color: tw.color, ttl: 0.09 })
+              w.beams.push({ x1: last.x, y1: last.y, x2: next.x, y2: next.y, color: tw.color, ttl: 0.12, style: 'bolt' })
+              addImpact(w, next.x, next.y, tw.color, 0)
               hit.add(next.id); last = next
             }
           }
         } else {
-          // a homing bullet that carries the effect
-          w.bullets.push({ x: tw.x, y: tw.y, targetId: pick.id, speed: 320, eff, color: tw.color })
+          // a homing bullet that carries the effect (bigger if it explodes)
+          addMuzzle(w, tw)
+          w.bullets.push({ x: tw.x, y: tw.y, targetId: pick.id, speed: 320, eff, color: tw.color, r: eff.splash ? 6 : 4 })
         }
         tw.cdLeft = eff0.cooldown
       }
@@ -352,17 +411,21 @@ function SmudgeDefense({ onBack }) {
         if (step >= d - e.r) {
           applyHit(e, b.eff)
           if (b.eff.splash) splashHit(w, b.eff, e.x, e.y, e)
+          addImpact(w, e.x, e.y, b.color, b.eff.splash)
           b.dead = true
         } else {
+          b.px = b.x; b.py = b.y          // remember last spot, for the trail
           b.x += (dx / d) * step
           b.y += (dy / d) * step
         }
       }
       w.bullets = w.bullets.filter((b) => !b.dead)
 
-      // fade beams
+      // fade beams + effects
       for (const bm of w.beams) bm.ttl -= dt
       w.beams = w.beams.filter((bm) => bm.ttl > 0)
+      for (const f of w.fx) f.ttl -= dt
+      w.fx = w.fx.filter((f) => f.ttl > 0)
 
       // pay out kills
       const alive = []
@@ -456,14 +519,14 @@ function SmudgeDefense({ onBack }) {
     ctx.font = '22px sans-serif'
     ctx.fillText('🏠', BASE.x, BASE.y)
 
-    // beams (lasers / lightning) under towers
+    // beams (lasers / lightning) under towers — style depends on the tower
     for (const bm of w.beams) {
-      ctx.strokeStyle = bm.color
-      ctx.lineWidth = 2.5
-      ctx.globalAlpha = Math.min(1, bm.ttl / 0.09)
-      ctx.beginPath(); ctx.moveTo(bm.x1, bm.y1); ctx.lineTo(bm.x2, bm.y2); ctx.stroke()
-      ctx.globalAlpha = 1
+      ctx.globalAlpha = Math.min(1, bm.ttl / 0.12)
+      if (bm.style === 'bolt') drawBolt(ctx, bm)
+      else drawBeamLine(ctx, bm)
     }
+    ctx.globalAlpha = 1
+    ctx.shadowBlur = 0
 
     // towers on color-coded discs
     for (const tw of w.towers) {
@@ -510,11 +573,28 @@ function SmudgeDefense({ onBack }) {
       ctx.fillRect(e.x - e.r, e.y - e.r - 7, bw * Math.max(0, e.hp / e.maxHp), 3)
     }
 
-    // bullets
+    // bullets — glowing projectiles with a short motion trail
     for (const b of w.bullets) {
-      ctx.fillStyle = b.color
-      ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI * 2); ctx.fill()
+      if (b.px != null) {
+        ctx.strokeStyle = b.color; ctx.globalAlpha = 0.35; ctx.lineWidth = (b.r || 4) * 1.2
+        ctx.beginPath(); ctx.moveTo(b.px, b.py); ctx.lineTo(b.x, b.y); ctx.stroke()
+        ctx.globalAlpha = 1
+      }
+      ctx.fillStyle = b.color; ctx.shadowColor = b.color; ctx.shadowBlur = 8
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r || 4, 0, Math.PI * 2); ctx.fill()
     }
+    ctx.shadowBlur = 0
+
+    // flashes / impact rings / splash shockwaves (drawn on top of everything)
+    for (const f of w.fx) {
+      const k = f.ttl / f.max                     // 1 → 0 as it fades out
+      const r = f.r0 + (f.r1 - f.r0) * (1 - k)
+      ctx.globalAlpha = k
+      ctx.beginPath(); ctx.arc(f.x, f.y, Math.max(0.5, r), 0, Math.PI * 2)
+      if (f.fill) { ctx.fillStyle = f.color; ctx.fill() }
+      else { ctx.strokeStyle = f.color; ctx.lineWidth = 2; ctx.stroke() }
+    }
+    ctx.globalAlpha = 1
   }
 
   function cellFromEvent(e) {

@@ -56,7 +56,8 @@ create table if not exists coin_rates (
   game         text primary key,
   rate         numeric not null,
   lower_better boolean not null default false,
-  baseline     integer not null default 0
+  baseline     integer not null default 0,
+  cap          integer default 1500   -- max Smudge's per play; NULL = no cap
 );
 -- pricier games pay more, but everything pays less now (longer grind)
 insert into coin_rates (game, rate, lower_better, baseline) values
@@ -71,9 +72,12 @@ insert into coin_rates (game, rate, lower_better, baseline) values
   ('split',     3.0, false, 0),    -- 40000  ~450
   ('survivor',  1.5, false, 0),    -- free   ~60  (kills × 1.5, ~40 kills -> 60)
   ('defense',   8.0, false, 0),    -- free   ~64  (waves × 8, ~8 waves -> 64)
-  ('defense_hard', 24.0, false, 0) -- hardcore Defense: 3× normal rate, separate leaderboard
+  ('defense_hard', 200.0, false, 0) -- hardcore Defense: 25× normal rate, no cap, separate leaderboard
 on conflict (game) do update
   set rate = excluded.rate, lower_better = excluded.lower_better, baseline = excluded.baseline;
+
+-- Tower Defense (normal + hardcore) pays with NO cap, so long runs keep earning.
+update coin_rates set cap = null where game in ('defense', 'defense_hard');
 
 alter table coin_rates enable row level security;
 create policy "rates are public read" on coin_rates for select using (true);
@@ -89,7 +93,6 @@ as $$
 declare
   r       coin_rates%rowtype;
   earned  integer;
-  cap     integer := 1500;
 begin
   if auth.uid() is null then raise exception 'not logged in'; end if;
 
@@ -104,7 +107,10 @@ begin
     earned := floor(p_score * r.rate);
   end if;
 
-  earned := greatest(0, least(earned, cap));  -- never negative, never above the cap
+  earned := greatest(0, earned);                 -- never negative
+  if r.cap is not null then
+    earned := least(earned, r.cap);              -- apply this game's cap (NULL = uncapped)
+  end if;
   update profiles set coins = coins + earned where id = auth.uid();
   return (select coins from profiles where id = auth.uid());
 end;
