@@ -121,23 +121,35 @@ You **auto-shoot** the nearest enemy — the skill is dodging. Score = kills.
 - Every few kills you **level up** and pick 1 of 3 upgrades (fire rate, damage,
   extra bullet, move speed, +health, piercing) — that's the "build" hook.
 - **Anti-camp design (don't undo this):** enemies toughen up forever with time,
-  the multishot fan is a tight cone (not a 360° spray), and every ~16s a **wave
+  the multishot fan is a tight cone (not a 360° spray), and every ~22s a **wave
   surge** spawns a full ring of enemies around you. Together these force you to
   *kite* (keep moving) instead of standing still — an earlier version let you
   camp dead-center and never die. Tuning knobs are at the top of the file.
+- ⚠️ **`ENEMY_MAX_SPEED` (110) must stay BELOW `PLAYER_SPEED` (150) — don't
+  remove it.** Before this cap (added 2026-06-25), enemy speed climbed forever
+  (`50 + elapsed*5`) and passed your speed around ~20s, so they'd out-run you and
+  the game became literally unwinnable ("can't survive the first swarm"). The cap
+  guarantees good movement can always escape. Surges were also made less frequent
+  (`SURGE_EVERY` 16→22) and smaller, and the speed ramp gentler (5→3).
 
 ## Smudge Defense (`SmudgeDefense.jsx`)
 A fixed-path tower defense. Enemies walk a set road (`CORNERS` → `WAYPOINTS`) to
 your 🏠; ones that arrive cost a life. Build towers on buildable cells for money.
 Endless waves (press Start Wave), boss every 5th. Score = waves cleared.
-- **30 towers** in one `TOWERS` array, built from a small set of "powers" mixed
+- **27 towers** in one `TOWERS` array, built from a small set of "powers" mixed
   + matched: dmg/range/cooldown, `slow`, `dotDps` (poison), `splash`, `beam` +
-  `chain` (lightning), `stun`, `knock`, `income` (money makers, `shoot:false`),
-  and `aura` (buff towers, `shoot:false`). Add a tower = add one row.
+  `chain` (lightning), `stun`, `knock`, and `aura` (buff towers, `shoot:false`).
+  Add a tower = add one row.
+- **No money-printer towers.** The 3 passive-income towers (Coiner/Bank/Vault)
+  were removed on 2026-06-25 so you can't farm infinite cash and snowball — you
+  now earn ONLY from kills + clearing waves. (The `income` power + its loop are
+  gone too.) This is also what makes late waves bite: money stays tight.
+- **Difficulty is a steady climb** (`makeWave`): enemy HP `3 + wave*3`, count
+  `5 + wave*2.5`, speed capped at 100, boss every 5th at `×12` HP. Smooth ramp,
+  no exponential spikes — retune those numbers to rebalance.
 - The tray is **sorted by cost** at render. Tap a tower type then an empty cell
   to build; tap a PLACED tower (nothing selected) to pick it up → **move** it
   free or **sell** for 75% back.
-- **Income towers only earn during an active wave** (no idle farming).
 - **Time-locked at 1 hour** of playtime (`TIME_LOCKED.defense = 3600`). The
   Shop progress bar + menu hiding are automatic (see the time-lock note below).
 
@@ -192,6 +204,16 @@ database rule (so it can't be bypassed).
   why login is Google now, not email links.
 - ⚠️ **Refresh the wallet after admin changes** — set_coins etc. update the DB,
   but call `reloadProfile()` or the on-screen balance looks stale (it's cached).
+- ⚠️ **Re-running `db/shop-setup.sql` errors partway and skips new policies.**
+  `create policy` has no `if not exists`, so re-running the whole file stops at
+  the first policy that already exists — any NEW policies near the bottom never
+  reach the live DB. This bit the owner "remove a game" feature: the delete
+  policy was in the file but never got created in Supabase. Symptom: a
+  `.delete()` (or `.update()`) blocked by RLS returns **success with no error**
+  but deletes nothing — so the UI says "🗑️ Removed" while the row stays put.
+  Fix used: run just the one policy, prefixed with
+  `drop policy if exists "<name>" on <table>;` so it's safe to re-run. (Fixed
+  the owner remove-game button on 2026-06-24 this way.)
 
 ## Conventions / patterns
 - **Reuse components** (GameCard, ScoreSaver, Leaderboard) — "build once, use many."
@@ -216,6 +238,20 @@ database rule (so it can't be bypassed).
 - Owner sits on 1,000,000,000 coins (Max Coins button), so he tops the coins
   leaderboard. Fine for now.
 - Vercel does NOT auto-deploy from GitHub; deploys are manual via `vercel --prod`.
+
+## Open bugs (WIP)
+- ✅ **FIXED 2026-06-25 — Smudge Defense white-screen flash on tower click.**
+  Root cause: it was a main-thread FREEZE (dev-only — never on prod, because dev
+  React is unminified + `StrictMode` doubles the work). The loop called
+  `setHud(...)` EVERY frame (~60×/sec), which re-rendered the whole component and
+  rebuilt all 27 tower buttons each time; a click piled on enough extra work to
+  stall for ~2s. The game always *continued* through the flash (the tell that it
+  was a freeze, not a crash/reload).
+  Fix: (1) `setHud` now only fires when a HUD value actually changes (tracked via
+  `hudRef`), cutting re-renders from 60/sec to a handful/sec; (2) each frame is
+  wrapped in a `safeFrame` try/catch that logs the real error and keeps the loop
+  alive, so a future bad frame can't silently freeze the canvas.
+  (No open bugs right now.)
 
 ## Ideas / next steps
 - Goal is ~30 minigames (at 13). Keaton prefers ORIGINAL games over clones.

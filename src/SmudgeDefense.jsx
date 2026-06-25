@@ -7,9 +7,9 @@ import ScoreSaver from './ScoreSaver'
 // to build towers; they auto-shoot. Survive endless waves
 // (boss every 5th). Score = waves cleared.
 //
-// 30 towers, built from a small set of POWERS that mix + match:
+// 27 towers, built from a small set of POWERS that mix + match:
 //   dmg/range/cooldown, slow, poison (dot), splash, chain
-//   lightning, stun, knockback, passive income, and aura buffs.
+//   lightning, stun, knockback, and aura buffs.
 // ============================================================
 
 // --- the grid / arena ---
@@ -52,7 +52,6 @@ const isBuildable = (c, r) => inGrid(c, r) && !isPathCell(c, r)
 //   chain (n) + chainRange              — lightning hops to n more enemies
 //   stun (s)                            — enemy can't move
 //   knock (px)                          — shove the enemy back down the road
-//   income (money/sec) + shoot:false    — money maker (doesn't shoot)
 //   aura {range, dmgMul, fireMul} + shoot:false — buffs nearby towers
 // ============================================================
 const TOWERS = [
@@ -64,7 +63,6 @@ const TOWERS = [
   { id: 'torch',   emoji: '🔥', name: 'Torch',      cost: 90,  color: '#fb923c', dmg: 0,  cooldown: 0.9,  range: 72, dotDps: 3, dotTime: 2 },
 
   // ---- Tier 2: mid-game roles ----
-  { id: 'coiner',  emoji: '🪙', name: 'Coiner',     cost: 140, color: '#fcd34d', income: 8,  shoot: false, range: 0 },
   { id: 'glacier', emoji: '🧊', name: 'Glacier',    cost: 150, color: '#67e8f9', dmg: 1,  cooldown: 1.0,  range: 90, slowMul: 0.35, slowTime: 2, splash: 30 },
   { id: 'hammer',  emoji: '🔨', name: 'Hammer',     cost: 160, color: '#fbbf24', dmg: 8,  cooldown: 1.6,  range: 70, stun: 0.5 },
   { id: 'tesla',   emoji: '⚡', name: 'Tesla',      cost: 160, color: '#a78bfa', dmg: 3,  cooldown: 0.8,  range: 90, beam: true, chain: 3, chainRange: 80 },
@@ -82,14 +80,12 @@ const TOWERS = [
   { id: 'storm',   emoji: '🌩️', name: 'Storm',      cost: 300, color: '#818cf8', dmg: 5,  cooldown: 0.9,  range: 100, beam: true, chain: 5, chainRange: 85 },
   { id: 'gravity', emoji: '🪐', name: 'Gravity',    cost: 320, color: '#c084fc', dmg: 2,  cooldown: 1.0,  range: 100, slowMul: 0.25, slowTime: 2.5, splash: 40 },
   { id: 'railgun', emoji: '🛰️', name: 'Railgun',    cost: 350, color: '#f43f5e', dmg: 30, cooldown: 2.4,  range: 200, beam: true },
-  { id: 'bank',    emoji: '💰', name: 'Bank',       cost: 300, color: '#fde047', income: 20, shoot: false, range: 0 },
   { id: 'maestro', emoji: '🎶', name: 'Maestro',    cost: 280, color: '#e879f9', shoot: false, range: 95, aura: { range: 95, dmgMul: 1.5, fireMul: 1.2 } },
 
   // ---- Tier 4: elite ----
   { id: 'trident', emoji: '🔱', name: 'Trident',    cost: 450, color: '#2dd4bf', dmg: 10, cooldown: 0.6,  range: 110, beam: true, chain: 3, chainRange: 90 },
   { id: 'meteor',  emoji: '☄️', name: 'Meteor',     cost: 500, color: '#fdba74', dmg: 40, cooldown: 2.8,  range: 130, splash: 70 },
   { id: 'dragon',  emoji: '🐉', name: 'Dragon',     cost: 600, color: '#4ade80', dmg: 8,  cooldown: 0.4,  range: 120, dotDps: 20, dotTime: 2, splash: 40 },
-  { id: 'vault',   emoji: '💎', name: 'Vault',      cost: 600, color: '#22d3ee', income: 50, shoot: false, range: 0 },
   { id: 'overseer',emoji: '👁️', name: 'Overseer',   cost: 550, color: '#f472b6', shoot: false, range: 120, aura: { range: 120, dmgMul: 1.8, fireMul: 1.4 } },
   { id: 'doomsday',emoji: '🏆', name: 'Doomsday',   cost: 1000, color: '#fafafa', dmg: 80, cooldown: 3.0, range: 220, beam: true, splash: 80 },
 ]
@@ -100,17 +96,21 @@ const START_MONEY = 200
 const START_LIVES = 20
 const SPAWN_GAP = 0.6
 
+// Difficulty is a STEADY CLIMB: every value grows smoothly with the wave number
+// (no sudden exponential spikes), but the slopes are steep enough that late waves
+// get genuinely brutal. Tune the numbers below to re-balance the whole game.
 function makeWave(wave) {
   const list = []
-  const n = 4 + wave * 2
-  const hp = 2 + wave * 2
-  const speed = Math.min(80, 32 + wave * 2)
-  const reward = 5 + Math.floor(wave / 2)
+  const n = 5 + Math.floor(wave * 2.5)        // more enemies each wave
+  const hp = 3 + wave * 3                      // tankier each wave (steeper than before)
+  const speed = Math.min(100, 30 + wave * 2.5) // a bit faster, capped so it stays fair
+  const reward = 5 + Math.floor(wave / 2)      // kill payout barely grows = money stays tight
   for (let i = 0; i < n; i++) {
     list.push({ hp, speed, reward, r: 11, color: '#a855f7', boss: false })
   }
   if (wave % 5 === 0) {
-    list.push({ hp: hp * 10, speed: speed * 0.6, reward: reward * 8, r: 18, color: '#f97316', boss: true })
+    // boss every 5th wave — scales with the wave so it's always a real threat
+    list.push({ hp: hp * 12, speed: speed * 0.6, reward: reward * 8, r: 18, color: '#f97316', boss: true })
   }
   return list
 }
@@ -177,6 +177,7 @@ function SmudgeDefense({ onBack }) {
   const selectedRef = useRef(null)
   const heldRef = useRef(null)
   const hoverRef = useRef(null)
+  const hudRef = useRef(null)   // last HUD values pushed to React — so we only re-render on a real change
 
   useEffect(() => { selectedRef.current = selected }, [selected])
   useEffect(() => { heldRef.current = held }, [held])
@@ -205,11 +206,6 @@ function SmudgeDefense({ onBack }) {
       const w = world.current
       const dt = Math.min((now - lastRef.current) / 1000, 0.05)
       lastRef.current = now
-
-      // passive income towers — only earn while a wave is actually happening
-      if (w.waveActive) {
-        for (const tw of w.towers) if (tw.income) w.money += tw.income * dt
-      }
 
       // spawn enemies
       if (w.waveActive) {
@@ -340,11 +336,29 @@ function SmudgeDefense({ onBack }) {
       }
 
       draw(ctx, w)
-      setHud({ money: Math.floor(w.money), lives: w.lives, wave: w.wave, waveActive: w.waveActive })
-      raf = requestAnimationFrame(frame)
+      // only re-render React when a HUD number actually changed (not 60×/sec).
+      // This was making dev mode re-build the whole 27-tower tray every frame.
+      const h = { money: Math.floor(w.money), lives: w.lives, wave: w.wave, waveActive: w.waveActive }
+      const p = hudRef.current
+      if (!p || p.money !== h.money || p.lives !== h.lives || p.wave !== h.wave || p.waveActive !== h.waveActive) {
+        hudRef.current = h
+        setHud(h)
+      }
+      raf = requestAnimationFrame(safeFrame)
     }
 
-    raf = requestAnimationFrame(frame)
+    // wrap each frame so one bad frame can't silently freeze the canvas: it logs
+    // the real error to the console AND keeps the loop alive (rAF runs outside
+    // React, so ErrorBoundary can't catch a throw in here).
+    const safeFrame = (now) => {
+      try { frame(now) }
+      catch (err) {
+        console.error('SmudgeDefense frame error:', err)
+        raf = requestAnimationFrame(safeFrame)
+      }
+    }
+
+    raf = requestAnimationFrame(safeFrame)
     return () => cancelAnimationFrame(raf)
   }, [phase])
 
@@ -499,6 +513,7 @@ function SmudgeDefense({ onBack }) {
     setSelected(null)
     setHeld(null)
     setScore(0)
+    hudRef.current = null
     setHud({ money: START_MONEY, lives: START_LIVES, wave: 0, waveActive: false })
     setPhase('playing')
   }

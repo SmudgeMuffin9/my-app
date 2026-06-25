@@ -20,12 +20,15 @@ const START_HP = 5           // starting health
 const BULLET_R = 4           // bullet radius
 const BULLET_SPEED = 320     // bullet speed (px/sec)
 const ENEMY_R = 13           // enemy radius
-const ENEMY_START_SPEED = 50 // enemy speed at the start (px/sec)
-const ENEMY_SPEED_RAMP = 5   // enemies get this much faster each second
+const ENEMY_START_SPEED = 46 // enemy speed at the start (px/sec)
+const ENEMY_SPEED_RAMP = 3   // enemies get this much faster each second
+const ENEMY_MAX_SPEED = 110  // HARD CEILING — must stay below PLAYER_SPEED (150) so you
+                             // can always out-run the swarm by kiting. Without this cap,
+                             // enemies eventually got faster than you = guaranteed death.
 const SPAWN_START = 1.1      // seconds between spawns at the start
-const SPAWN_MIN = 0.18       // fastest spawn rate (seconds), late game
+const SPAWN_MIN = 0.24       // fastest spawn rate (seconds), late game
 const INVULN = 0.8           // seconds you can't be hit again after a hit
-const SURGE_EVERY = 16       // seconds between "wave surges" (a ring of enemies)
+const SURGE_EVERY = 22       // seconds between "wave surges" (a ring of enemies)
 const FAN_SPREAD = 0.13      // angle between extra bullets (smaller = tighter cone)
 
 // how tough a new enemy is — climbs forever with time, so any build eventually dies
@@ -166,7 +169,7 @@ function SmudgeSurvivors({ onBack }) {
       // so you HAVE to move to punch a gap and escape (that's "kiting").
       w.surgeTimer -= dt
       if (w.surgeTimer <= 0) {
-        const count = 8 + Math.floor(w.elapsed / 12) // bigger rings later
+        const count = 6 + Math.floor(w.elapsed / 16) // bigger rings later
         const ringR = Math.max(W, H) * 0.7           // spawn just outside view
         const start = Math.random() * Math.PI * 2     // random rotation each time
         for (let i = 0; i < count; i++) {
@@ -178,11 +181,12 @@ function SmudgeSurvivors({ onBack }) {
             hp: enemyHp(w.elapsed),
           })
         }
-        w.surgeTimer = Math.max(8, SURGE_EVERY - w.elapsed * 0.05)
+        w.surgeTimer = Math.max(13, SURGE_EVERY - w.elapsed * 0.04)
       }
 
       // ---- MOVE ENEMIES toward the player ----
-      const eSpeed = ENEMY_START_SPEED + w.elapsed * ENEMY_SPEED_RAMP
+      // speed climbs over time but is CAPPED below your speed, so kiting always works
+      const eSpeed = Math.min(ENEMY_MAX_SPEED, ENEMY_START_SPEED + w.elapsed * ENEMY_SPEED_RAMP)
       for (const e of w.enemies) {
         const ax = w.px - e.x, ay = w.py - e.y
         const d = Math.hypot(ax, ay) || 1
