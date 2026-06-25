@@ -7,7 +7,7 @@ import ScoreSaver from './ScoreSaver'
 // to build towers; they auto-shoot. Survive endless waves
 // (boss every 5th). Score = waves cleared.
 //
-// 27 towers, built from a small set of POWERS that mix + match:
+// 30 towers, built from a small set of POWERS that mix + match:
 //   dmg/range/cooldown, slow, poison (dot), splash, chain
 //   lightning, stun, knockback, and aura buffs.
 // ============================================================
@@ -68,6 +68,7 @@ const TOWERS = [
   { id: 'tesla',   emoji: '⚡', name: 'Tesla',      cost: 160, color: '#a78bfa', dmg: 3,  cooldown: 0.8,  range: 90, beam: true, chain: 3, chainRange: 80 },
   { id: 'venom',   emoji: '☠️', name: 'Venom',      cost: 170, color: '#84cc16', dmg: 1,  cooldown: 1.0,  range: 85, dotDps: 6, dotTime: 3 },
   { id: 'cyclone', emoji: '🌪️', name: 'Cyclone',    cost: 180, color: '#38bdf8', dmg: 2,  cooldown: 0.9,  range: 85, knock: 18 },
+  { id: 'magnet',  emoji: '🧲', name: 'Magnet',     cost: 190, color: '#60a5fa', dmg: 2,  cooldown: 1.0,  range: 90, knock: 26, slowMul: 0.5, slowTime: 1.5 },
   { id: 'cannon',  emoji: '💣', name: 'Cannon',     cost: 120, color: '#f59e0b', dmg: 6,  cooldown: 1.3,  range: 100, splash: 35 },
   { id: 'sniper',  emoji: '🎯', name: 'Sniper',     cost: 200, color: '#ef4444', dmg: 12, cooldown: 1.9,  range: 165, beam: true },
   { id: 'booster', emoji: '🎺', name: 'Booster',    cost: 130, color: '#f0abfc', shoot: false, range: 80, aura: { range: 80, dmgMul: 1.25, fireMul: 1.0 } },
@@ -79,6 +80,8 @@ const TOWERS = [
   { id: 'rocket',  emoji: '🚀', name: 'Rocket',     cost: 260, color: '#fb7185', dmg: 14, cooldown: 1.8,  range: 120, splash: 45 },
   { id: 'storm',   emoji: '🌩️', name: 'Storm',      cost: 300, color: '#818cf8', dmg: 5,  cooldown: 0.9,  range: 100, beam: true, chain: 5, chainRange: 85 },
   { id: 'gravity', emoji: '🪐', name: 'Gravity',    cost: 320, color: '#c084fc', dmg: 2,  cooldown: 1.0,  range: 100, slowMul: 0.25, slowTime: 2.5, splash: 40 },
+  { id: 'prism',   emoji: '🌟', name: 'Prism',      cost: 340, color: '#5eead4', dmg: 6,  cooldown: 0.8,  range: 110, beam: true, chain: 4, chainRange: 80, slowMul: 0.6, slowTime: 1.2 },
+  { id: 'plague',  emoji: '🦠', name: 'Plague',     cost: 360, color: '#a3e635', dmg: 2,  cooldown: 1.1,  range: 95, dotDps: 16, dotTime: 4, splash: 45 },
   { id: 'railgun', emoji: '🛰️', name: 'Railgun',    cost: 350, color: '#f43f5e', dmg: 30, cooldown: 2.4,  range: 200, beam: true },
   { id: 'maestro', emoji: '🎶', name: 'Maestro',    cost: 280, color: '#e879f9', shoot: false, range: 95, aura: { range: 95, dmgMul: 1.5, fireMul: 1.2 } },
 
@@ -87,24 +90,65 @@ const TOWERS = [
   { id: 'meteor',  emoji: '☄️', name: 'Meteor',     cost: 500, color: '#fdba74', dmg: 40, cooldown: 2.8,  range: 130, splash: 70 },
   { id: 'dragon',  emoji: '🐉', name: 'Dragon',     cost: 600, color: '#4ade80', dmg: 8,  cooldown: 0.4,  range: 120, dotDps: 20, dotTime: 2, splash: 40 },
   { id: 'overseer',emoji: '👁️', name: 'Overseer',   cost: 550, color: '#f472b6', shoot: false, range: 120, aura: { range: 120, dmgMul: 1.8, fireMul: 1.4 } },
-  { id: 'doomsday',emoji: '🏆', name: 'Doomsday',   cost: 1000, color: '#fafafa', dmg: 80, cooldown: 3.0, range: 220, beam: true, splash: 80 },
+  { id: 'doomsday',emoji: '🏆', name: 'Doomsday',   cost: 1000, color: '#fafafa', dmg: 60, cooldown: 3.0, range: 220, beam: true, splash: 80 },
 ]
 const towerById = (id) => TOWERS.find((t) => t.id === id)
 const previewRange = (t) => t.range || (t.aura ? t.aura.range : 0)
+
+// Build a plain-English description of a tower from its powers, so the info
+// panel is always accurate (and new towers describe themselves for free).
+function describe(t) {
+  if (t.shoot === false && t.aura) {
+    const dmg = Math.round((t.aura.dmgMul - 1) * 100)
+    const fire = Math.round((t.aura.fireMul - 1) * 100)
+    return `Support — doesn't shoot. Buffs towers within ${t.aura.range}px: +${dmg}% damage` +
+      (fire > 0 ? `, +${fire}% fire rate.` : '.')
+  }
+  const head = t.dmg ? `${t.dmg} damage` : 'No direct damage'
+  const fx = []
+  if (t.beam) fx.push('hits instantly (beam)')
+  if (t.chain) fx.push(`chains to ${t.chain} more`)
+  if (t.splash) fx.push(`splash ${t.splash}px`)
+  if (t.slowMul) fx.push(`slows to ${Math.round(t.slowMul * 100)}% for ${t.slowTime}s`)
+  if (t.dotDps) fx.push(`poison ${t.dotDps}/s for ${t.dotTime}s`)
+  if (t.stun) fx.push(`stuns ${t.stun}s`)
+  if (t.knock) fx.push('knocks enemies back')
+  let s = `${head} every ${t.cooldown}s · ${t.range}px range.`
+  if (fx.length) s += ` ${fx.join(', ')}.`
+  return s
+}
 
 const START_MONEY = 200
 const START_LIVES = 20
 const SPAWN_GAP = 0.6
 
+// Hardcore mode: same towers, brutal odds (set on the START screen).
+const HARD_START_MONEY = 150
+const HARD_LIVES = 10
+
+// Coin payout PREVIEW for the Cash Out button. Mirrors the database
+// (coin_rates.defense rate = 8, and award_coins caps each play at 1500).
+// The server is still the real source of truth — this is just the on-screen estimate.
+const COIN_RATE = 8         // normal Defense: Smudge's per wave (mirrors coin_rates.defense)
+const HARD_COIN_RATE = 24   // hardcore Defense: 3× the normal rate (mirrors coin_rates.defense_hard)
+const COIN_CAP = 1500
+const coinsFor = (wavesCleared, hardcore = false) =>
+  Math.min(COIN_CAP, Math.max(0, wavesCleared) * (hardcore ? HARD_COIN_RATE : COIN_RATE))
+
 // Difficulty is a STEADY CLIMB: every value grows smoothly with the wave number
 // (no sudden exponential spikes), but the slopes are steep enough that late waves
 // get genuinely brutal. Tune the numbers below to re-balance the whole game.
-function makeWave(wave) {
+function makeWave(wave, hardcore = false) {
   const list = []
-  const n = 5 + Math.floor(wave * 2.5)        // more enemies each wave
-  const hp = 3 + wave * 3                      // tankier each wave (steeper than before)
-  const speed = Math.min(100, 30 + wave * 2.5) // a bit faster, capped so it stays fair
+  let n = 5 + Math.floor(wave * 2.5)          // more enemies each wave
+  let hp = 3 + wave * 3                        // tankier each wave (steeper than before)
+  let speed = Math.min(100, 30 + wave * 2.5)  // a bit faster, capped so it stays fair
   const reward = 5 + Math.floor(wave / 2)      // kill payout barely grows = money stays tight
+  if (hardcore) {                              // brutal odds: more, tankier, faster enemies
+    n = Math.round(n * 1.4)
+    hp = Math.round(hp * 1.7)
+    speed = Math.min(120, speed * 1.15)
+  }
   for (let i = 0; i < n; i++) {
     list.push({ hp, speed, reward, r: 11, color: '#a855f7', boss: false })
   }
@@ -115,10 +159,11 @@ function makeWave(wave) {
   return list
 }
 
-function freshWorld() {
+function freshWorld(hardcore = false) {
   return {
-    money: START_MONEY,
-    lives: START_LIVES,
+    money: hardcore ? HARD_START_MONEY : START_MONEY,
+    lives: hardcore ? HARD_LIVES : START_LIVES,
+    hardcore,
     wave: 0,
     wavesCleared: 0,
     waveActive: false,
@@ -168,9 +213,13 @@ function effectOf(t, dmg) {
 function SmudgeDefense({ onBack }) {
   const [phase, setPhase] = useState('ready')
   const [score, setScore] = useState(0)
-  const [hud, setHud] = useState({ money: START_MONEY, lives: START_LIVES, wave: 0, waveActive: false })
+  const [hud, setHud] = useState({ money: START_MONEY, lives: START_LIVES, wave: 0, waveActive: false, wavesCleared: 0 })
   const [selected, setSelected] = useState(null)
   const [held, setHeld] = useState(null) // a tower you picked up to move/sell
+  const [hardcore, setHardcore] = useState(false) // brutal difficulty, chosen on the START screen
+  const [cashedOut, setCashedOut] = useState(false) // did the run end by Cash Out (vs base falling)?
+  const [autoWave, setAutoWave] = useState(false) // auto-start the next wave when one clears
+  const autoRef = useRef(false) // ref copy so the game loop reads the live value
   const world = useRef(freshWorld())
   const canvasRef = useRef(null)
   const lastRef = useRef(0)
@@ -181,6 +230,7 @@ function SmudgeDefense({ onBack }) {
 
   useEffect(() => { selectedRef.current = selected }, [selected])
   useEffect(() => { heldRef.current = held }, [held])
+  useEffect(() => { autoRef.current = autoWave }, [autoWave])
 
   // effective stats of a tower after nearby aura towers buff it
   function towerEff(w, tw) {
@@ -327,6 +377,13 @@ function SmudgeDefense({ onBack }) {
         w.waveActive = false
         w.wavesCleared = w.wave
         w.money += 15 + w.wave * 3
+        if (autoRef.current) {
+          // Auto mode: launch the next wave instantly (same as pressing Start Wave)
+          w.wave += 1
+          w.queue = makeWave(w.wave, w.hardcore)
+          w.spawnTimer = 0
+          w.waveActive = true
+        }
       }
 
       if (w.lives <= 0) {
@@ -338,9 +395,10 @@ function SmudgeDefense({ onBack }) {
       draw(ctx, w)
       // only re-render React when a HUD number actually changed (not 60×/sec).
       // This was making dev mode re-build the whole 27-tower tray every frame.
-      const h = { money: Math.floor(w.money), lives: w.lives, wave: w.wave, waveActive: w.waveActive }
+      const h = { money: Math.floor(w.money), lives: w.lives, wave: w.wave, waveActive: w.waveActive, wavesCleared: w.wavesCleared }
       const p = hudRef.current
-      if (!p || p.money !== h.money || p.lives !== h.lives || p.wave !== h.wave || p.waveActive !== h.waveActive) {
+      if (!p || p.money !== h.money || p.lives !== h.lives || p.wave !== h.wave ||
+          p.waveActive !== h.waveActive || p.wavesCleared !== h.wavesCleared) {
         hudRef.current = h
         setHud(h)
       }
@@ -509,29 +567,41 @@ function SmudgeDefense({ onBack }) {
   function onCanvasLeave() { hoverRef.current = null }
 
   function start() {
-    world.current = freshWorld()
+    const w = freshWorld(hardcore)
+    world.current = w
     setSelected(null)
     setHeld(null)
     setScore(0)
+    setCashedOut(false)
     hudRef.current = null
-    setHud({ money: START_MONEY, lives: START_LIVES, wave: 0, waveActive: false })
+    setHud({ money: w.money, lives: w.lives, wave: 0, waveActive: false, wavesCleared: 0 })
     setPhase('playing')
   }
   function startWave() {
     const w = world.current
     if (w.waveActive) return
     w.wave += 1
-    w.queue = makeWave(w.wave)
+    w.queue = makeWave(w.wave, w.hardcore)
     w.spawnTimer = 0
     w.waveActive = true
   }
+  // end the run on your terms and bank the Smudge's you've earned so far
+  function cashOut() {
+    const w = world.current
+    setScore(w.wavesCleared)
+    setCashedOut(true)
+    setPhase('done')
+  }
   function reset() {
-    world.current = freshWorld()
+    world.current = freshWorld(hardcore)
     setSelected(null)
     setHeld(null)
     setScore(0)
+    setCashedOut(false)
     setPhase('ready')
   }
+
+  const selTower = selected ? towerById(selected) : null
 
   return (
     <section id="center">
@@ -545,7 +615,19 @@ function SmudgeDefense({ onBack }) {
           <p className="split-keys">
             Pick a tower, tap an empty spot to build, then hit <b>Start Wave</b>.
             30 towers — scroll the tray to see them all! Tap a placed tower
-            (with nothing selected) to <b>move</b> or <b>sell</b> it.
+            (with nothing selected) to <b>move</b> or <b>sell</b> it. Tap a tower in
+            the tray to see <b>what it does</b>.
+          </p>
+          <button
+            className={`def-hardcore ${hardcore ? 'on' : ''}`}
+            onClick={() => setHardcore((h) => !h)}
+          >
+            {hardcore ? '🔥 Hardcore: ON' : '💀 Hardcore: OFF'}
+          </button>
+          <p className="split-keys def-hard-note">
+            Hardcore = <b>10 lives</b> (not 20), less starting cash, and tougher,
+            faster, bigger swarms — but you earn <b>3× Smudge's</b> per wave and
+            rank on the <b>🔥 Hardcore leaderboard</b>. 🤑
           </p>
           <button className="play-btn" onClick={start}>START</button>
         </>
@@ -554,6 +636,7 @@ function SmudgeDefense({ onBack }) {
       {phase === 'playing' && (
         <>
           <div className="def-bar">
+            {hardcore && <span className="def-hard-badge">🔥 HARDCORE</span>}
             <span className="split-stat">💰 {hud.money}</span>
             <span className="split-stat">❤️ {hud.lives}</span>
             <span className="split-stat">🌊 {hud.wave}</span>
@@ -564,7 +647,28 @@ function SmudgeDefense({ onBack }) {
             ) : (
               <span className="def-incoming">Wave {hud.wave}… 🌊</span>
             )}
+            <button
+              className={`def-wavebtn ${autoWave ? 'def-auto-on' : ''}`}
+              onClick={() => setAutoWave((a) => !a)}
+              title="Auto-start the next wave the instant this one clears"
+            >
+              ⏩ Auto: {autoWave ? 'ON' : 'OFF'}
+            </button>
+            <button
+              className="def-wavebtn def-cashout"
+              onClick={cashOut}
+              title="End the run now and bank the Smudge's you've earned"
+            >
+              💰 Cash Out ({coinsFor(hud.wavesCleared, hardcore)})
+            </button>
           </div>
+
+          {selTower && (
+            <div className="def-desc">
+              <span className="def-desc-head">{selTower.emoji} {selTower.name} · 💰{selTower.cost}</span>
+              <span className="def-desc-body">{describe(selTower)}</span>
+            </div>
+          )}
 
           {held && (
             <div className="def-bar">
@@ -613,9 +717,11 @@ function SmudgeDefense({ onBack }) {
 
       {phase === 'done' && (
         <>
-          <h2 className="split-result">Your base fell!</h2>
-          <p className="split-stat">You cleared {score} wave{score === 1 ? '' : 's'} 🌊</p>
-          <ScoreSaver game="defense" score={score} />
+          <h2 className="split-result">{cashedOut ? '💰 Cashed out!' : 'Your base fell!'}</h2>
+          <p className="split-stat">
+            You cleared {score} wave{score === 1 ? '' : 's'} 🌊{hardcore ? ' · 🔥 Hardcore' : ''}
+          </p>
+          <ScoreSaver game={hardcore ? 'defense_hard' : 'defense'} score={score} />
           <button className="play-btn" onClick={reset}>Try again</button>
         </>
       )}

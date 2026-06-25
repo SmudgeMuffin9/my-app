@@ -1564,6 +1564,75 @@
   color: #fcd34d;
 }
 
+/* Cash Out button — gold-tinted so it stands out from Start Wave */
+.def-cashout {
+  border-color: #fcd34d;
+  color: #fde68a;
+  background: rgba(252, 211, 77, 0.12);
+}
+.def-cashout:hover { background: rgba(252, 211, 77, 0.22); }
+
+/* Auto-wave toggle — green glow when ON */
+.def-auto-on {
+  border-color: #4ade80;
+  color: #bbf7d0;
+  background: rgba(74, 222, 128, 0.15);
+}
+.def-auto-on:hover { background: rgba(74, 222, 128, 0.25); }
+
+/* tower info panel — shows what the selected tower does */
+.def-desc {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: min(94vw, 560px);
+  margin: 0 auto 8px;
+  padding: 7px 12px;
+  border: 1px solid var(--accent-border);
+  border-radius: 10px;
+  background: rgba(34, 211, 238, 0.08);
+  text-align: center;
+}
+.def-desc-head {
+  font-family: var(--heading);
+  font-size: 13px;
+  color: var(--accent);
+  letter-spacing: 0.4px;
+}
+.def-desc-body {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+/* Hardcore toggle on the START screen + its in-game badge */
+.def-hardcore {
+  font-family: var(--heading);
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  padding: 8px 18px;
+  margin: 4px auto;
+  display: block;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--social-bg);
+  color: var(--text-h);
+  cursor: pointer;
+}
+.def-hardcore.on {
+  border-color: #f97316;
+  color: #fdba74;
+  background: rgba(249, 115, 22, 0.15);
+  box-shadow: 0 0 14px rgba(249, 115, 22, 0.35);
+}
+.def-hard-note { max-width: 360px; margin: 0 auto 8px; }
+.def-hard-badge {
+  font-family: var(--heading);
+  font-size: 13px;
+  color: #fdba74;
+  letter-spacing: 0.6px;
+}
+
 /* on phones / narrow screens: stack the tray UNDER the board as a wrapping grid */
 @media (max-width: 620px) {
   .def-canvas { height: min(46vh, 380px); }

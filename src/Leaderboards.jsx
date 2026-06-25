@@ -5,6 +5,7 @@ import CoinsLeaderboard from './CoinsLeaderboard'
 const GAMES = [
   { game: 'survivor', title: '🧟 Smudge Survivors', unit: ' kills' },
   { game: 'defense', title: '🏰 Smudge Defense', unit: ' waves' },
+  { game: 'defense_hard', title: '🔥 Smudge Defense — HARDCORE', unit: ' waves' },
   { game: 'snake', title: '🐍 Snake' },
   { game: 'whack', title: '🔨 Whack-a-Mole' },
   { game: 'split', title: '🧠 Split Brain', unit: ' pts' },
