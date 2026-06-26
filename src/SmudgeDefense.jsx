@@ -12,7 +12,8 @@ function makeCode() {
   return s
 }
 // How often the HOST streams the game picture to the GUEST (seconds).
-const SNAP_EVERY = 1 / 15
+// 10/sec keeps it smooth while staying well under realtime limits.
+const SNAP_EVERY = 1 / 10
 
 // ============================================================
 // SMUDGE DEFENSE — an original fixed-path tower defense game.
@@ -482,7 +483,8 @@ function SmudgeDefense({ onBack }) {
     return {
       e: w.enemies.map((e) => ({ x: Math.round(e.x), y: Math.round(e.y), r: e.r, color: e.color, hp: e.hp, maxHp: e.maxHp, slowT: e.slowT, dotT: e.dotT })),
       t: w.towers.map((t) => ({ x: t.x, y: t.y, color: t.color, emoji: t.emoji, col: t.col, row: t.row, owner: t.owner, cost: t.cost })),
-      b: w.bullets.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), px: b.px, py: b.py, color: b.color, r: b.r })),
+      // bullets are intentionally NOT streamed — they're the most numerous thing
+      // and least important; dropping them keeps snapshots light.
       bm: w.beams.map((bm) => ({ x1: bm.x1, y1: bm.y1, x2: bm.x2, y2: bm.y2, color: bm.color, style: bm.style, ttl: bm.ttl })),
       fx: w.fx.map((f) => ({ x: f.x, y: f.y, r0: f.r0, r1: f.r1, ttl: f.ttl, max: f.max, color: f.color, fill: f.fill })),
       wallets: w.wallets, lives: w.lives, wave: w.wave, waveActive: w.waveActive, wavesCleared: w.wavesCleared,
@@ -518,8 +520,8 @@ function SmudgeDefense({ onBack }) {
       if (w.coop && roleRef.current === 'guest') {
         const snap = snapRef.current
         if (snap) {
-          w.enemies = snap.e; w.towers = snap.t; w.bullets = snap.b
-          w.beams = snap.bm; w.fx = snap.fx
+          w.enemies = snap.e || []; w.towers = snap.t || []; w.bullets = snap.b || []
+          w.beams = snap.bm || []; w.fx = snap.fx || []
           w.wallets = snap.wallets; w.lives = snap.lives
           w.wave = snap.wave; w.waveActive = snap.waveActive; w.wavesCleared = snap.wavesCleared
           draw(ctx, w)
