@@ -292,6 +292,9 @@ function SmudgeDefense({ onBack }) {
   const [messages, setMessages] = useState([])         // chat log
   const [draft, setDraft] = useState('')
   const [netStatus, setNetStatus] = useState('connecting')
+  const [coopSel, setCoopSel] = useState(null) // co-op: a tower you tapped, pending sell
+  const coopSelRef = useRef(null)
+  useEffect(() => { coopSelRef.current = coopSel }, [coopSel])
   const chanRef = useRef(null)        // the Supabase realtime channel
   const snapRef = useRef(null)        // GUEST: latest game picture from the host
   const actionQ = useRef([])          // HOST: remote actions waiting to be applied
@@ -398,7 +401,7 @@ function SmudgeDefense({ onBack }) {
     snapClock.current = 0
     setCoopRole(role); roleRef.current = role
     setHardcore(payload.hardcore)
-    setSelected(null); setHeld(null); setScore(0); setCashedOut(false)
+    setSelected(null); setHeld(null); setCoopSel(null); setScore(0); setCashedOut(false)
     setAutoWave(false); autoRef.current = false
     hudRef.current = null
     setHud({ money: w.wallets[myId] || 0, money2: 0, lives: w.lives, wave: 0, waveActive: false, wavesCleared: 0 })
@@ -469,7 +472,7 @@ function SmudgeDefense({ onBack }) {
   function makeSnap(w) {
     return {
       e: w.enemies.map((e) => ({ x: Math.round(e.x), y: Math.round(e.y), r: e.r, color: e.color, hp: e.hp, maxHp: e.maxHp, slowT: e.slowT, dotT: e.dotT })),
-      t: w.towers.map((t) => ({ x: t.x, y: t.y, color: t.color, emoji: t.emoji, col: t.col, row: t.row, owner: t.owner })),
+      t: w.towers.map((t) => ({ x: t.x, y: t.y, color: t.color, emoji: t.emoji, col: t.col, row: t.row, owner: t.owner, cost: t.cost })),
       b: w.bullets.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), px: b.px, py: b.py, color: b.color, r: b.r })),
       bm: w.beams.map((bm) => ({ x1: bm.x1, y1: bm.y1, x2: bm.x2, y2: bm.y2, color: bm.color, style: bm.style, ttl: bm.ttl })),
       fx: w.fx.map((f) => ({ x: f.x, y: f.y, r0: f.r0, r1: f.r1, ttl: f.ttl, max: f.max, color: f.color, fill: f.fill })),
@@ -765,6 +768,13 @@ function SmudgeDefense({ onBack }) {
       ctx.fillText(tw.emoji, tw.x, tw.y)
     }
 
+    // co-op: red ring around a tower you've tapped to sell
+    if (coopSelRef.current) {
+      const p = center(coopSelRef.current.col, coopSelRef.current.row)
+      ctx.strokeStyle = '#fca5a5'; ctx.lineWidth = 3
+      ctx.beginPath(); ctx.arc(p.x, p.y, 18, 0, Math.PI * 2); ctx.stroke()
+    }
+
     // ghost preview + range ring (for a tower being built OR moved)
     const ghost = heldRef.current || (selectedRef.current && towerById(selectedRef.current))
     const hov = hoverRef.current
@@ -839,10 +849,16 @@ function SmudgeDefense({ onBack }) {
     // Tap one of YOUR OWN towers (nothing selected) = sell it.
     if (w.coop) {
       if (selectedRef.current) {
+        // building a new tower from the tray
         if (!isBuildable(col, row) || occupied) return
+        setCoopSel(null)
         coopAction({ kind: 'build', towerId: selectedRef.current, col, row, by: myId })
       } else if (occupied && occupied.owner === myId) {
-        coopAction({ kind: 'sell', col, row, by: myId })
+        // tap your OWN tower → select it for selling (confirm with the Sell button)
+        setCoopSel({ col, row, emoji: occupied.emoji, cost: occupied.cost || 0 })
+      } else {
+        // tapped empty space / someone else's tower → cancel any pending sell
+        setCoopSel(null)
       }
       return
     }
@@ -1040,6 +1056,19 @@ function SmudgeDefense({ onBack }) {
             </div>
           )}
 
+          {coop && coopSel && (
+            <div className="def-bar">
+              <span className="def-incoming">Your {coopSel.emoji} — sell it?</span>
+              <button
+                className="def-wavebtn def-cashout"
+                onClick={() => { coopAction({ kind: 'sell', col: coopSel.col, row: coopSel.row, by: myId }); setCoopSel(null) }}
+              >
+                ✖️ Sell for 💰{Math.floor((coopSel.cost || 0) * 0.75)}
+              </button>
+              <button className="def-wavebtn" onClick={() => setCoopSel(null)}>Cancel</button>
+            </div>
+          )}
+
           <div className="def-stage">
             <canvas
               ref={canvasRef}
@@ -1060,7 +1089,7 @@ function SmudgeDefense({ onBack }) {
                 <button
                   key={t.id}
                   className={`def-tower ${on ? 'on' : ''} ${broke ? 'broke' : ''}`}
-                  onClick={() => { setHeld(null); setSelected(on ? null : t.id) }}
+                  onClick={() => { setHeld(null); setCoopSel(null); setSelected(on ? null : t.id) }}
                   title={t.name}
                 >
                   <span className="def-tower-emoji">{t.emoji}</span>
