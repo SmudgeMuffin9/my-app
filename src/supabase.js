@@ -6,4 +6,8 @@ import { createClient } from '@supabase/supabase-js'
 const SUPABASE_URL = 'https://rpptipltsmafmcetofyd.supabase.co'
 const SUPABASE_KEY = 'sb_publishable_HfJk46a42wOvo3U1Yz-FTw_jPj5lZK2'
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
+// Allow more realtime messages/sec than the default 10 — co-op streams the
+// game picture ~15×/sec, so we lift the cap so those aren't throttled.
+export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  realtime: { params: { eventsPerSecond: 40 } },
+})

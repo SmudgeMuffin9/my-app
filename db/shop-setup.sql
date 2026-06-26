@@ -72,7 +72,7 @@ insert into coin_rates (game, rate, lower_better, baseline) values
   ('split',     3.0, false, 0),    -- 40000  ~450
   ('survivor',  1.5, false, 0),    -- free   ~60  (kills × 1.5, ~40 kills -> 60)
   ('defense',   8.0, false, 0),    -- free   ~64  (waves × 8, ~8 waves -> 64)
-  ('defense_hard', 200.0, false, 0) -- hardcore Defense: 25× normal rate, no cap, separate leaderboard
+  ('defense_hard', 500.0, false, 0) -- hardcore Defense: ~62× normal rate, no cap, separate leaderboard
 on conflict (game) do update
   set rate = excluded.rate, lower_better = excluded.lower_better, baseline = excluded.baseline;
 

@@ -1633,6 +1633,30 @@
   letter-spacing: 0.6px;
 }
 
+/* ---- Smudge Defense CO-OP lobby + chat ---- */
+.coop-wrap { max-width: 420px; margin: 0 auto; text-align: center; }
+.coop-card {
+  display: flex; gap: 8px; justify-content: center; align-items: center;
+  margin: 10px auto; max-width: 360px;
+}
+.coop-input {
+  flex: 1; padding: 8px 12px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--social-bg);
+  color: var(--text-h); font-size: 15px; font-family: var(--heading);
+  letter-spacing: 1px; text-align: center;
+}
+.coop-code { color: #fdba74; letter-spacing: 3px; }
+.coop-chat {
+  height: 240px; overflow-y: auto; text-align: left;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: var(--social-bg); padding: 10px; margin: 10px auto; max-width: 360px;
+}
+.coop-msg { padding: 3px 0; font-size: 14px; }
+.coop-msg.mine { color: #fdba74; }
+.coop-empty { opacity: 0.6; font-style: italic; }
+.coop-soon { opacity: 0.7; font-size: 13px; margin-top: 12px; }
+.coop-chat-mini { height: 96px; margin-top: 10px; }
+
 /* on phones / narrow screens: stack the tray UNDER the board as a wrapping grid */
 @media (max-width: 620px) {
   .def-canvas { height: min(46vh, 380px); }

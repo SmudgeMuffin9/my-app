@@ -1,5 +1,18 @@
 import { useState, useRef, useEffect } from 'react'
 import ScoreSaver from './ScoreSaver'
+import DefenseCoop from './DefenseCoop'
+import { supabase } from './supabase'
+import { useAuth } from './auth'
+
+// A short, easy-to-read room code (no confusing 0/O or 1/I).
+const COOP_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+function makeCode() {
+  let s = ''
+  for (let i = 0; i < 4; i++) s += COOP_ALPHABET[Math.floor(Math.random() * COOP_ALPHABET.length)]
+  return s
+}
+// How often the HOST streams the game picture to the GUEST (seconds).
+const SNAP_EVERY = 1 / 15
 
 // ============================================================
 // SMUDGE DEFENSE — an original fixed-path tower defense game.
@@ -124,14 +137,14 @@ const START_LIVES = 20
 const SPAWN_GAP = 0.6
 
 // Hardcore mode: same towers, brutal odds (set on the START screen).
-const HARD_START_MONEY = 150
-const HARD_LIVES = 10
+const HARD_START_MONEY = 200
+const HARD_LIVES = 7
 
 // Coin payout PREVIEW for the Cash Out button. Mirrors the database
 // (coin_rates.defense rate = 8, and award_coins caps each play at 1500).
 // The server is still the real source of truth — this is just the on-screen estimate.
 const COIN_RATE = 8         // normal Defense: Smudge's per wave (mirrors coin_rates.defense)
-const HARD_COIN_RATE = 200  // hardcore Defense: 25× the normal rate (mirrors coin_rates.defense_hard)
+const HARD_COIN_RATE = 500  // hardcore Defense: ~62× the normal rate (mirrors coin_rates.defense_hard)
 // Tower Defense has NO payout cap (coin_rates.cap is NULL for defense/defense_hard),
 // so long runs keep earning. Other games still cap at 1500 server-side.
 const coinsFor = (wavesCleared, hardcore = false) =>
@@ -146,17 +159,17 @@ function makeWave(wave, hardcore = false) {
   let hp = 3 + wave * 3                        // tankier each wave (steeper than before)
   let speed = Math.min(100, 30 + wave * 2.5)  // a bit faster, capped so it stays fair
   const reward = 5 + Math.floor(wave / 2)      // kill payout barely grows = money stays tight
-  if (hardcore) {                              // brutal odds: more, tankier, faster enemies
-    n = Math.round(n * 1.4)
-    hp = Math.round(hp * 1.7)
-    speed = Math.min(120, speed * 1.15)
+  if (hardcore) {                              // BRUTAL odds: way more, way tankier, faster enemies
+    n = Math.round(n * 2.0)
+    hp = Math.round(hp * 2.6)
+    speed = Math.min(140, speed * 1.3)
   }
   for (let i = 0; i < n; i++) {
     list.push({ hp, speed, reward, r: 11, color: '#a855f7', boss: false })
   }
   if (wave % 5 === 0) {
     // boss every 5th wave — scales with the wave so it's always a real threat
-    list.push({ hp: hp * 12, speed: speed * 0.6, reward: reward * 8, r: 18, color: '#f97316', boss: true })
+    list.push({ hp: hp * (hardcore ? 14 : 12), speed: speed * 0.6, reward: reward * 8, r: 18, color: '#f97316', boss: true })
   }
   return list
 }
@@ -183,23 +196,28 @@ function freshWorld(hardcore = false) {
 
 // ---- shared damage helpers (used by bullets AND beams) ----
 function knockback(e, px) {
-  const t = WAYPOINTS[e.wp] || BASE
-  const dx = e.x - t.x, dy = e.y - t.y
+  // Shove the enemy BACK toward the corner they came from (the previous
+  // waypoint), so they slide along the road instead of flying off the map at
+  // bends. Clamp the push so they can't get shoved past that corner.
+  const prev = WAYPOINTS[e.wp - 1] || WAYPOINTS[0]
+  const dx = prev.x - e.x, dy = prev.y - e.y
   const d = Math.hypot(dx, dy) || 1
-  e.x += (dx / d) * px
-  e.y += (dy / d) * px
+  const move = Math.min(px, d)
+  e.x += (dx / d) * move
+  e.y += (dy / d) * move
 }
-function applyHit(e, eff) {
+function applyHit(e, eff, owner) {
+  if (owner != null) e.lastOwner = owner // co-op: remember who to pay for the kill
   if (eff.dmg) e.hp -= eff.dmg
   if (eff.slowMul) { e.slowT = eff.slowTime; e.slowMul = eff.slowMul }
   if (eff.dotDps) { e.dotDps = eff.dotDps; e.dotT = eff.dotTime }
   if (eff.stun) e.stunT = Math.max(e.stunT || 0, eff.stun)
   if (eff.knock) knockback(e, eff.knock)
 }
-function splashHit(w, eff, x, y, exclude) {
+function splashHit(w, eff, x, y, exclude, owner) {
   for (const e of w.enemies) {
     if (e === exclude || e.hp <= 0) continue
-    if ((e.x - x) ** 2 + (e.y - y) ** 2 <= eff.splash * eff.splash) applyHit(e, eff)
+    if ((e.x - x) ** 2 + (e.y - y) ** 2 <= eff.splash * eff.splash) applyHit(e, eff, owner)
   }
 }
 // ---- visual effects (pure eye-candy: pushed into w.fx, drawn + faded each frame) ----
@@ -256,6 +274,30 @@ function effectOf(t, dmg) {
 }
 
 function SmudgeDefense({ onBack }) {
+  const [coop, setCoop] = useState(false) // true = we're in the 2-player co-op flow
+  // ---- co-op identity + lobby state ----
+  const { username } = useAuth()
+  const myName = username || 'Player'
+  // A unique id PER TAB (not per account), so two windows — even on the SAME
+  // login — count as two separate players. Presence, tower ownership, and
+  // wallets all key off this id.
+  const clientIdRef = useRef(null)
+  if (!clientIdRef.current) clientIdRef.current = Math.random().toString(36).slice(2, 10)
+  const myId = clientIdRef.current
+  const [coopScreen, setCoopScreen] = useState('menu') // 'menu' | 'lobby' | 'play'
+  const [code, setCode] = useState('')
+  const [joinInput, setJoinInput] = useState('')
+  const [coopRole, setCoopRole] = useState(null)       // 'host' | 'guest'
+  const [members, setMembers] = useState([])           // [{ id, name }]
+  const [messages, setMessages] = useState([])         // chat log
+  const [draft, setDraft] = useState('')
+  const [netStatus, setNetStatus] = useState('connecting')
+  const chanRef = useRef(null)        // the Supabase realtime channel
+  const snapRef = useRef(null)        // GUEST: latest game picture from the host
+  const actionQ = useRef([])          // HOST: remote actions waiting to be applied
+  const snapClock = useRef(0)         // HOST: time since we last sent a snapshot
+  const roleRef = useRef(null)        // live copy of coopRole for the game loop
+  useEffect(() => { roleRef.current = coopRole }, [coopRole])
   const [phase, setPhase] = useState('ready')
   const [score, setScore] = useState(0)
   const [hud, setHud] = useState({ money: START_MONEY, lives: START_LIVES, wave: 0, waveActive: false, wavesCleared: 0 })
@@ -276,6 +318,164 @@ function SmudgeDefense({ onBack }) {
   useEffect(() => { selectedRef.current = selected }, [selected])
   useEffect(() => { heldRef.current = held }, [held])
   useEffect(() => { autoRef.current = autoWave }, [autoWave])
+
+  // ---- money helpers: solo uses one pot (w.money); co-op uses per-player wallets ----
+  const moneyOf = (w, id) => (w.coop ? (w.wallets[id] || 0) : w.money)
+  const addMoney = (w, id, n) => {
+    if (w.coop) w.wallets[id] = (w.wallets[id] || 0) + n
+    else w.money += n
+  }
+
+  // push HUD numbers to React, but only when one actually changed (not 60×/sec).
+  function pushHud(w) {
+    const partnerId = w.coop ? (myId === w.hostId ? w.guestId : w.hostId) : null
+    const h = {
+      money: Math.floor(w.coop ? (w.wallets[myId] || 0) : w.money),
+      money2: Math.floor(w.coop ? (w.wallets[partnerId] || 0) : 0),
+      lives: w.lives, wave: w.wave, waveActive: w.waveActive, wavesCleared: w.wavesCleared,
+    }
+    const p = hudRef.current
+    if (!p || p.money !== h.money || p.money2 !== h.money2 || p.lives !== h.lives ||
+        p.wave !== h.wave || p.waveActive !== h.waveActive || p.wavesCleared !== h.wavesCleared) {
+      hudRef.current = h
+      setHud(h)
+    }
+  }
+
+  // ======== CO-OP: realtime channel (chat + presence + game stream) ========
+  useEffect(() => {
+    if (!coop || !code) return
+
+    const channel = supabase.channel(`def-coop-${code}`, {
+      config: { broadcast: { self: false }, presence: { key: myId } },
+    })
+    // chat
+    channel.on('broadcast', { event: 'chat' }, ({ payload }) => {
+      setMessages((m) => [...m, { name: payload.name, text: payload.text, mine: false }])
+    })
+    // GUEST: a fresh game picture from the host
+    channel.on('broadcast', { event: 'snap' }, ({ payload }) => { snapRef.current = payload })
+    // HOST: a click/action from the guest — queue it for the next frame
+    channel.on('broadcast', { event: 'act' }, ({ payload }) => { actionQ.current.push(payload) })
+    // GUEST: the host pressed START
+    channel.on('broadcast', { event: 'start' }, ({ payload }) => { startCoopWorld(payload, 'guest') })
+    // the game ended (host fell or cashed out)
+    channel.on('broadcast', { event: 'over' }, ({ payload }) => {
+      setScore(payload.waves); setCashedOut(!!payload.cashedOut); setPhase('done')
+    })
+    // who's in the room?
+    channel.on('presence', { event: 'sync' }, () => {
+      const st = channel.presenceState()
+      const seen = new Map()
+      Object.values(st).flat().forEach((p) => seen.set(p.id, { id: p.id, name: p.name }))
+      setMembers([...seen.values()])
+    })
+
+    channel.subscribe(async (s) => {
+      if (s === 'SUBSCRIBED') {
+        setNetStatus('live')
+        await channel.track({ id: myId, name: myName, role: roleRef.current })
+      } else if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') {
+        setNetStatus('error')
+      }
+    })
+    chanRef.current = channel
+    return () => { supabase.removeChannel(channel); chanRef.current = null }
+  }, [coop, code, myId, myName])
+
+  // set up the shared world for a co-op battle (both host + guest call this)
+  function startCoopWorld(payload, role) {
+    const w = freshWorld(payload.hardcore)
+    w.coop = true
+    w.hostId = payload.hostId
+    w.guestId = payload.guestId
+    const start = payload.hardcore ? HARD_START_MONEY : START_MONEY
+    w.wallets = {}
+    payload.ids.forEach((id) => { w.wallets[id] = start })
+    world.current = w
+    snapRef.current = null
+    actionQ.current = []
+    snapClock.current = 0
+    setCoopRole(role); roleRef.current = role
+    setHardcore(payload.hardcore)
+    setSelected(null); setHeld(null); setScore(0); setCashedOut(false)
+    setAutoWave(false); autoRef.current = false
+    hudRef.current = null
+    setHud({ money: w.wallets[myId] || 0, money2: 0, lives: w.lives, wave: 0, waveActive: false, wavesCleared: 0 })
+    setCoopScreen('play')
+    setPhase('playing')
+  }
+
+  // HOST presses START: figure out the guest, tell everyone, start the battle.
+  function startCoopBattle() {
+    const other = members.find((m) => m.id !== myId)
+    if (!other) return
+    const payload = { hardcore, hostId: myId, guestId: other.id, ids: [myId, other.id] }
+    chanRef.current?.send({ type: 'broadcast', event: 'start', payload })
+    startCoopWorld(payload, 'host')
+  }
+
+  // send a chat message
+  function sendChat() {
+    const text = draft.trim()
+    if (!text || !chanRef.current) return
+    chanRef.current.send({ type: 'broadcast', event: 'chat', payload: { name: myName, text } })
+    setMessages((m) => [...m, { name: myName, text, mine: true }])
+    setDraft('')
+  }
+
+  // lobby buttons
+  const resetLobby = () => { setNetStatus('connecting'); setMessages([]); setMembers([]) }
+  const createRoom = () => { resetLobby(); setCode(makeCode()); setCoopRole('host'); roleRef.current = 'host'; setCoopScreen('lobby') }
+  const joinRoom = () => {
+    const c = joinInput.trim().toUpperCase()
+    if (c.length === 4) { resetLobby(); setCode(c); setCoopRole('guest'); roleRef.current = 'guest'; setCoopScreen('lobby') }
+  }
+  const leaveCoop = () => {
+    setCoop(false); setCoopScreen('menu'); setCode(''); setJoinInput('')
+    setCoopRole(null); roleRef.current = null
+    setPhase('ready')
+  }
+
+  // a co-op action: HOST applies it right away; GUEST sends it to the host.
+  function coopAction(act) {
+    if (roleRef.current === 'host') applyAction(world.current, act)
+    else chanRef.current?.send({ type: 'broadcast', event: 'act', payload: act })
+  }
+  // HOST only: actually change the shared world for an action.
+  function applyAction(w, act) {
+    if (!w || !w.coop) { console.log('[COOP applyAction SKIP] no world/coop', !!w, w?.coop); return }
+    // make sure whoever is acting has a wallet (covers any id timing hiccup)
+    if (w.wallets[act.by] == null) w.wallets[act.by] = w.hardcore ? HARD_START_MONEY : START_MONEY
+    if (act.kind === 'build') {
+      const t = towerById(act.towerId)
+      if (!t || !isBuildable(act.col, act.row)) return
+      if (w.towers.some((x) => x.col === act.col && x.row === act.row)) return
+      if (moneyOf(w, act.by) < t.cost) return
+      addMoney(w, act.by, -t.cost)
+      const p = center(act.col, act.row)
+      w.towers.push({ ...t, col: act.col, row: act.row, x: p.x, y: p.y, cdLeft: 0, owner: act.by })
+    } else if (act.kind === 'sell') {
+      const tw = w.towers.find((x) => x.col === act.col && x.row === act.row && x.owner === act.by)
+      if (!tw) return
+      addMoney(w, act.by, Math.floor(tw.cost * 0.75))
+      w.towers = w.towers.filter((x) => x !== tw)
+    } else if (act.kind === 'startWave') {
+      if (!w.waveActive) { w.wave += 1; w.queue = makeWave(w.wave, w.hardcore); w.spawnTimer = 0; w.waveActive = true }
+    }
+  }
+
+  // build a compact "picture" of the world for the host to stream to the guest
+  function makeSnap(w) {
+    return {
+      e: w.enemies.map((e) => ({ x: Math.round(e.x), y: Math.round(e.y), r: e.r, color: e.color, hp: e.hp, maxHp: e.maxHp, slowT: e.slowT, dotT: e.dotT })),
+      t: w.towers.map((t) => ({ x: t.x, y: t.y, color: t.color, emoji: t.emoji, col: t.col, row: t.row, owner: t.owner })),
+      b: w.bullets.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), px: b.px, py: b.py, color: b.color, r: b.r })),
+      bm: w.beams.map((bm) => ({ x1: bm.x1, y1: bm.y1, x2: bm.x2, y2: bm.y2, color: bm.color, style: bm.style, ttl: bm.ttl })),
+      fx: w.fx.map((f) => ({ x: f.x, y: f.y, r0: f.r0, r1: f.r1, ttl: f.ttl, max: f.max, color: f.color, fill: f.fill })),
+      wallets: w.wallets, lives: w.lives, wave: w.wave, waveActive: w.waveActive, wavesCleared: w.wavesCleared,
+    }
+  }
 
   // effective stats of a tower after nearby aura towers buff it
   function towerEff(w, tw) {
@@ -301,6 +501,25 @@ function SmudgeDefense({ onBack }) {
       const w = world.current
       const dt = Math.min((now - lastRef.current) / 1000, 0.05)
       lastRef.current = now
+
+      // GUEST: don't run the game — just draw the latest picture the host sent.
+      if (w.coop && roleRef.current === 'guest') {
+        const snap = snapRef.current
+        if (snap) {
+          w.enemies = snap.e; w.towers = snap.t; w.bullets = snap.b
+          w.beams = snap.bm; w.fx = snap.fx
+          w.wallets = snap.wallets; w.lives = snap.lives
+          w.wave = snap.wave; w.waveActive = snap.waveActive; w.wavesCleared = snap.wavesCleared
+          draw(ctx, w)
+          pushHud(w)
+        }
+        raf = requestAnimationFrame(safeFrame)
+        return
+      }
+      // HOST: fold in any clicks the guest sent before we simulate this frame.
+      if (w.coop && roleRef.current === 'host') {
+        while (actionQ.current.length) applyAction(w, actionQ.current.shift())
+      }
 
       // spawn enemies
       if (w.waveActive) {
@@ -364,7 +583,7 @@ function SmudgeDefense({ onBack }) {
           addMuzzle(w, tw)
           for (const e of w.enemies) {
             if (e.hp <= 0) continue
-            if ((e.x - tw.x) ** 2 + (e.y - tw.y) ** 2 <= eff0.range ** 2) applyHit(e, eff)
+            if ((e.x - tw.x) ** 2 + (e.y - tw.y) ** 2 <= eff0.range ** 2) applyHit(e, eff, tw.owner)
           }
           // a big ring sweeping out to the full radius = the pulse you can see
           w.fx.push({ x: tw.x, y: tw.y, r0: 8, r1: eff0.range, ttl: 0.35, max: 0.35, color: tw.color, fill: false })
@@ -372,8 +591,8 @@ function SmudgeDefense({ onBack }) {
           // instant laser/lightning — chain towers crackle, big hitters fire thick beams
           const style = tw.chain ? 'bolt' : (tw.splash || tw.dmg >= 12 ? 'heavy' : 'laser')
           addMuzzle(w, tw)
-          applyHit(pick, eff)
-          if (eff.splash) splashHit(w, eff, pick.x, pick.y, pick)
+          applyHit(pick, eff, tw.owner)
+          if (eff.splash) splashHit(w, eff, pick.x, pick.y, pick, tw.owner)
           w.beams.push({ x1: tw.x, y1: tw.y, x2: pick.x, y2: pick.y, color: tw.color, ttl: 0.12, style })
           addImpact(w, pick.x, pick.y, tw.color, eff.splash)
           if (tw.chain) {
@@ -387,7 +606,7 @@ function SmudgeDefense({ onBack }) {
                 if (dd <= best) { best = dd; next = e }
               }
               if (!next) break
-              applyHit(next, eff)
+              applyHit(next, eff, tw.owner)
               w.beams.push({ x1: last.x, y1: last.y, x2: next.x, y2: next.y, color: tw.color, ttl: 0.12, style: 'bolt' })
               addImpact(w, next.x, next.y, tw.color, 0)
               hit.add(next.id); last = next
@@ -396,7 +615,7 @@ function SmudgeDefense({ onBack }) {
         } else {
           // a homing bullet that carries the effect (bigger if it explodes)
           addMuzzle(w, tw)
-          w.bullets.push({ x: tw.x, y: tw.y, targetId: pick.id, speed: 320, eff, color: tw.color, r: eff.splash ? 6 : 4 })
+          w.bullets.push({ x: tw.x, y: tw.y, targetId: pick.id, speed: 320, eff, color: tw.color, r: eff.splash ? 6 : 4, owner: tw.owner })
         }
         tw.cdLeft = eff0.cooldown
       }
@@ -409,8 +628,8 @@ function SmudgeDefense({ onBack }) {
         const d = Math.hypot(dx, dy) || 1
         const step = b.speed * dt
         if (step >= d - e.r) {
-          applyHit(e, b.eff)
-          if (b.eff.splash) splashHit(w, b.eff, e.x, e.y, e)
+          applyHit(e, b.eff, b.owner)
+          if (b.eff.splash) splashHit(w, b.eff, e.x, e.y, e, b.owner)
           addImpact(w, e.x, e.y, b.color, b.eff.splash)
           b.dead = true
         } else {
@@ -430,8 +649,11 @@ function SmudgeDefense({ onBack }) {
       // pay out kills
       const alive = []
       for (const e of w.enemies) {
-        if (e.hp <= 0) w.money += e.reward
-        else alive.push(e)
+        if (e.hp <= 0) {
+          // co-op: pay the coins to whoever's tower landed the final hit
+          if (w.coop) addMoney(w, e.lastOwner || w.hostId, e.reward)
+          else w.money += e.reward
+        } else alive.push(e)
       }
       w.enemies = alive
 
@@ -439,7 +661,9 @@ function SmudgeDefense({ onBack }) {
       if (w.waveActive && w.queue.length === 0 && w.enemies.length === 0) {
         w.waveActive = false
         w.wavesCleared = w.wave
-        w.money += 15 + w.wave * 3
+        const bonus = 15 + w.wave * 3
+        if (w.coop) { for (const id in w.wallets) w.wallets[id] += bonus }
+        else w.money += bonus
         if (autoRef.current) {
           // Auto mode: launch the next wave instantly (same as pressing Start Wave)
           w.wave += 1
@@ -450,20 +674,23 @@ function SmudgeDefense({ onBack }) {
       }
 
       if (w.lives <= 0) {
+        if (w.coop && roleRef.current === 'host') {
+          chanRef.current?.send({ type: 'broadcast', event: 'over', payload: { waves: w.wavesCleared, cashedOut: false } })
+        }
         setScore(w.wavesCleared)
         setPhase('done')
         return
       }
 
       draw(ctx, w)
-      // only re-render React when a HUD number actually changed (not 60×/sec).
-      // This was making dev mode re-build the whole 27-tower tray every frame.
-      const h = { money: Math.floor(w.money), lives: w.lives, wave: w.wave, waveActive: w.waveActive, wavesCleared: w.wavesCleared }
-      const p = hudRef.current
-      if (!p || p.money !== h.money || p.lives !== h.lives || p.wave !== h.wave ||
-          p.waveActive !== h.waveActive || p.wavesCleared !== h.wavesCleared) {
-        hudRef.current = h
-        setHud(h)
+      pushHud(w)
+      // HOST: stream the game picture to the guest ~15×/sec.
+      if (w.coop && roleRef.current === 'host') {
+        snapClock.current += dt
+        if (snapClock.current >= SNAP_EVERY) {
+          snapClock.current = 0
+          chanRef.current?.send({ type: 'broadcast', event: 'snap', payload: makeSnap(w) })
+        }
       }
       raf = requestAnimationFrame(safeFrame)
     }
@@ -608,6 +835,18 @@ function SmudgeDefense({ onBack }) {
     const { col, row } = cellFromEvent(e)
     const occupied = w.towers.find((t) => t.col === col && t.row === row)
 
+    // CO-OP: no pick-up/move. Pick a tower type then tap empty = build.
+    // Tap one of YOUR OWN towers (nothing selected) = sell it.
+    if (w.coop) {
+      if (selectedRef.current) {
+        if (!isBuildable(col, row) || occupied) return
+        coopAction({ kind: 'build', towerId: selectedRef.current, col, row, by: myId })
+      } else if (occupied && occupied.owner === myId) {
+        coopAction({ kind: 'sell', col, row, by: myId })
+      }
+      return
+    }
+
     // 1) holding a tower we picked up → drop it on an empty buildable spot (free move)
     if (heldRef.current) {
       if (!isBuildable(col, row) || occupied) return
@@ -659,6 +898,7 @@ function SmudgeDefense({ onBack }) {
   }
   function startWave() {
     const w = world.current
+    if (w.coop) { coopAction({ kind: 'startWave' }); return }
     if (w.waveActive) return
     w.wave += 1
     w.queue = makeWave(w.wave, w.hardcore)
@@ -668,6 +908,9 @@ function SmudgeDefense({ onBack }) {
   // end the run on your terms and bank the Smudge's you've earned so far
   function cashOut() {
     const w = world.current
+    if (w.coop && roleRef.current === 'host') {
+      chanRef.current?.send({ type: 'broadcast', event: 'over', payload: { waves: w.wavesCleared, cashedOut: true } })
+    }
     setScore(w.wavesCleared)
     setCashedOut(true)
     setPhase('done')
@@ -682,6 +925,32 @@ function SmudgeDefense({ onBack }) {
   }
 
   const selTower = selected ? towerById(selected) : null
+
+  // Co-op LOBBY takes over the whole screen until the battle starts.
+  if (coop && coopScreen !== 'play') {
+    return (
+      <section id="center">
+        <DefenseCoop
+          screen={coopScreen}
+          code={code}
+          joinInput={joinInput}
+          setJoinInput={setJoinInput}
+          members={members}
+          messages={messages}
+          draft={draft}
+          setDraft={setDraft}
+          status={netStatus}
+          role={coopRole}
+          onCreate={createRoom}
+          onJoin={joinRoom}
+          onSend={sendChat}
+          onStart={startCoopBattle}
+          onLeave={leaveCoop}
+          onBack={() => setCoop(false)}
+        />
+      </section>
+    )
+  }
 
   return (
     <section id="center">
@@ -705,11 +974,15 @@ function SmudgeDefense({ onBack }) {
             {hardcore ? '🔥 Hardcore: ON' : '💀 Hardcore: OFF'}
           </button>
           <p className="split-keys def-hard-note">
-            Hardcore = <b>10 lives</b> (not 20), less starting cash, and tougher,
-            faster, bigger swarms — but you earn <b>3× Smudge's</b> per wave and
-            rank on the <b>🔥 Hardcore leaderboard</b>. 🤑
+            Hardcore = <b>7 lives</b> (not 20) and a BRUTAL
+            swarm — way more enemies, way tankier, faster — but you earn a huge{' '}
+            <b>500 Smudge's</b> per wave (no cap!) and rank on the{' '}
+            <b>🔥 Hardcore leaderboard</b>. 🤑
           </p>
           <button className="play-btn" onClick={start}>START</button>
+          <button className="def-hardcore" onClick={() => setCoop(true)}>
+            🤝 Co-op (2 player)
+          </button>
         </>
       )}
 
@@ -717,7 +990,9 @@ function SmudgeDefense({ onBack }) {
         <>
           <div className="def-bar">
             {hardcore && <span className="def-hard-badge">🔥 HARDCORE</span>}
+            {coop && <span className="def-hard-badge">🤝 CO-OP</span>}
             <span className="split-stat">💰 {hud.money}</span>
+            {coop && <span className="split-stat" title="your partner's wallet">👥 {hud.money2}</span>}
             <span className="split-stat">❤️ {hud.lives}</span>
             <span className="split-stat">🌊 {hud.wave}</span>
             {!hud.waveActive ? (
@@ -727,20 +1002,24 @@ function SmudgeDefense({ onBack }) {
             ) : (
               <span className="def-incoming">Wave {hud.wave}… 🌊</span>
             )}
-            <button
-              className={`def-wavebtn ${autoWave ? 'def-auto-on' : ''}`}
-              onClick={() => setAutoWave((a) => !a)}
-              title="Auto-start the next wave the instant this one clears"
-            >
-              ⏩ Auto: {autoWave ? 'ON' : 'OFF'}
-            </button>
-            <button
-              className="def-wavebtn def-cashout"
-              onClick={cashOut}
-              title="End the run now and bank the Smudge's you've earned"
-            >
-              💰 Cash Out ({coinsFor(hud.wavesCleared, hardcore)})
-            </button>
+            {(!coop || coopRole === 'host') && (
+              <>
+                <button
+                  className={`def-wavebtn ${autoWave ? 'def-auto-on' : ''}`}
+                  onClick={() => setAutoWave((a) => !a)}
+                  title="Auto-start the next wave the instant this one clears"
+                >
+                  ⏩ Auto: {autoWave ? 'ON' : 'OFF'}
+                </button>
+                <button
+                  className="def-wavebtn def-cashout"
+                  onClick={cashOut}
+                  title="End the run now and bank the Smudge's you've earned"
+                >
+                  💰 Cash Out ({coinsFor(hud.wavesCleared, hardcore)})
+                </button>
+              </>
+            )}
           </div>
 
           {selTower && (
@@ -792,6 +1071,28 @@ function SmudgeDefense({ onBack }) {
             })}
             </div>
           </div>
+
+          {coop && (
+            <>
+              <div className="coop-chat coop-chat-mini">
+                {messages.slice(-6).map((m, i) => (
+                  <div key={i} className={`coop-msg ${m.mine ? 'mine' : ''}`}>
+                    <b>{m.name}:</b> {m.text}
+                  </div>
+                ))}
+              </div>
+              <div className="coop-card">
+                <input
+                  className="coop-input"
+                  placeholder="Chat with your partner…"
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && sendChat()}
+                />
+                <button className="play-btn" onClick={sendChat}>Send</button>
+              </div>
+            </>
+          )}
         </>
       )}
 
@@ -800,9 +1101,16 @@ function SmudgeDefense({ onBack }) {
           <h2 className="split-result">{cashedOut ? '💰 Cashed out!' : 'Your base fell!'}</h2>
           <p className="split-stat">
             You cleared {score} wave{score === 1 ? '' : 's'} 🌊{hardcore ? ' · 🔥 Hardcore' : ''}
+            {coop ? ' · 🤝 Co-op' : ''}
           </p>
           <ScoreSaver game={hardcore ? 'defense_hard' : 'defense'} score={score} />
-          <button className="play-btn" onClick={reset}>Try again</button>
+          {coop ? (
+            <button className="play-btn" onClick={() => { setCoopScreen('lobby'); setPhase('ready') }}>
+              ← Back to lobby
+            </button>
+          ) : (
+            <button className="play-btn" onClick={reset}>Try again</button>
+          )}
         </>
       )}
     </section>
