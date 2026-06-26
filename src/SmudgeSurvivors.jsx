@@ -26,14 +26,16 @@ const ENEMY_MAX_SPEED = 110  // HARD CEILING — must stay below PLAYER_SPEED (1
                              // can always out-run the swarm by kiting. Without this cap,
                              // enemies eventually got faster than you = guaranteed death.
 const SPAWN_START = 1.1      // seconds between spawns at the start
-const SPAWN_MIN = 0.24       // fastest spawn rate (seconds), late game
+const SPAWN_MIN = 0.36       // fastest spawn rate (seconds), late game
+const MAX_ENEMIES = 65       // hard cap on enemies on screen, so the swarm can't
+                            // become an unkillable wall — keeps it survivable
 const INVULN = 0.8           // seconds you can't be hit again after a hit
 const SURGE_EVERY = 22       // seconds between "wave surges" (a ring of enemies)
 const FAN_SPREAD = 0.13      // angle between extra bullets (smaller = tighter cone)
 
-// how tough a new enemy is — climbs forever with time, so any build eventually dies
+// how tough a new enemy is — climbs with time, so any build eventually dies
 function enemyHp(elapsed) {
-  return 1 + Math.floor(elapsed / 10)
+  return 1 + Math.floor(elapsed / 13)
 }
 
 // XP needed to reach the NEXT level (level 1 -> 2 costs LEVEL_XP[0], etc.)
@@ -153,14 +155,16 @@ function SmudgeSurvivors({ onBack }) {
       // ---- SPAWN ENEMIES (faster over time) ----
       w.spawnTimer -= dt
       if (w.spawnTimer <= 0) {
-        const edge = Math.floor(Math.random() * 4)
-        let x, y
-        if (edge === 0) { x = Math.random() * W; y = -ENEMY_R }       // top
-        else if (edge === 1) { x = W + ENEMY_R; y = Math.random() * H } // right
-        else if (edge === 2) { x = Math.random() * W; y = H + ENEMY_R } // bottom
-        else { x = -ENEMY_R; y = Math.random() * H }                    // left
-        w.enemies.push({ id: w.nextId++, x, y, hp: enemyHp(w.elapsed) })
-        const rate = Math.max(SPAWN_MIN, SPAWN_START - w.elapsed * 0.04)
+        if (w.enemies.length < MAX_ENEMIES) {
+          const edge = Math.floor(Math.random() * 4)
+          let x, y
+          if (edge === 0) { x = Math.random() * W; y = -ENEMY_R }       // top
+          else if (edge === 1) { x = W + ENEMY_R; y = Math.random() * H } // right
+          else if (edge === 2) { x = Math.random() * W; y = H + ENEMY_R } // bottom
+          else { x = -ENEMY_R; y = Math.random() * H }                    // left
+          w.enemies.push({ id: w.nextId++, x, y, hp: enemyHp(w.elapsed) })
+        }
+        const rate = Math.max(SPAWN_MIN, SPAWN_START - w.elapsed * 0.03)
         w.spawnTimer = rate
       }
 
@@ -169,7 +173,7 @@ function SmudgeSurvivors({ onBack }) {
       // so you HAVE to move to punch a gap and escape (that's "kiting").
       w.surgeTimer -= dt
       if (w.surgeTimer <= 0) {
-        const count = 6 + Math.floor(w.elapsed / 16) // bigger rings later
+        const count = 5 + Math.floor(w.elapsed / 22) // bigger rings later (gentler growth)
         const ringR = Math.max(W, H) * 0.7           // spawn just outside view
         const start = Math.random() * Math.PI * 2     // random rotation each time
         for (let i = 0; i < count; i++) {
@@ -181,7 +185,7 @@ function SmudgeSurvivors({ onBack }) {
             hp: enemyHp(w.elapsed),
           })
         }
-        w.surgeTimer = Math.max(13, SURGE_EVERY - w.elapsed * 0.04)
+        w.surgeTimer = Math.max(16, SURGE_EVERY - w.elapsed * 0.03)
       }
 
       // ---- MOVE ENEMIES toward the player ----

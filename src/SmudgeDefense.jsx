@@ -138,8 +138,8 @@ const START_LIVES = 20
 const SPAWN_GAP = 0.6
 
 // Hardcore mode: same towers, brutal odds (set on the START screen).
-const HARD_START_MONEY = 200
-const HARD_LIVES = 7
+const HARD_START_MONEY = 140
+const HARD_LIVES = 5
 
 // Coin payout PREVIEW for the Cash Out button. Mirrors the database
 // (coin_rates.defense rate = 8, and award_coins caps each play at 1500).
@@ -161,16 +161,16 @@ function makeWave(wave, hardcore = false) {
   let speed = Math.min(100, 30 + wave * 2.5)  // a bit faster, capped so it stays fair
   const reward = 5 + Math.floor(wave / 2)      // kill payout barely grows = money stays tight
   if (hardcore) {                              // BRUTAL odds: way more, way tankier, faster enemies
-    n = Math.round(n * 2.0)
-    hp = Math.round(hp * 2.6)
-    speed = Math.min(140, speed * 1.3)
+    n = Math.round(n * 2.5)
+    hp = Math.round(hp * 4.0)
+    speed = Math.min(155, speed * 1.4)
   }
   for (let i = 0; i < n; i++) {
     list.push({ hp, speed, reward, r: 11, color: '#a855f7', boss: false })
   }
   if (wave % 5 === 0) {
     // boss every 5th wave — scales with the wave so it's always a real threat
-    list.push({ hp: hp * (hardcore ? 14 : 12), speed: speed * 0.6, reward: reward * 8, r: 18, color: '#f97316', boss: true })
+    list.push({ hp: hp * (hardcore ? 20 : 12), speed: speed * 0.6, reward: reward * 8, r: 18, color: '#f97316', boss: true })
   }
   return list
 }
@@ -953,7 +953,10 @@ function SmudgeDefense({ onBack }) {
   // end the run on your terms and bank the Smudge's you've earned so far
   function cashOut() {
     const w = world.current
-    if (w.coop && roleRef.current === 'host') {
+    // co-op: EITHER player can cash out (it ends the run for both). Tell the
+    // other player so their screen ends too. (guest's wavesCleared comes from
+    // the host's snapshots, so it's accurate.)
+    if (w.coop) {
       chanRef.current?.send({ type: 'broadcast', event: 'over', payload: { waves: w.wavesCleared, cashedOut: true } })
     }
     setScore(w.wavesCleared)
@@ -1019,7 +1022,7 @@ function SmudgeDefense({ onBack }) {
             {hardcore ? '🔥 Hardcore: ON' : '💀 Hardcore: OFF'}
           </button>
           <p className="split-keys def-hard-note">
-            Hardcore = <b>7 lives</b> (not 20) and a BRUTAL
+            Hardcore = <b>5 lives</b> (not 20) and a BRUTAL
             swarm — way more enemies, way tankier, faster — but you earn a huge{' '}
             <b>500 Smudge's</b> per wave (no cap!) and rank on the{' '}
             <b>🔥 Hardcore leaderboard</b>. 🤑
@@ -1048,23 +1051,21 @@ function SmudgeDefense({ onBack }) {
               <span className="def-incoming">Wave {hud.wave}… 🌊</span>
             )}
             {(!coop || coopRole === 'host') && (
-              <>
-                <button
-                  className={`def-wavebtn ${autoWave ? 'def-auto-on' : ''}`}
-                  onClick={() => setAutoWave((a) => !a)}
-                  title="Auto-start the next wave the instant this one clears"
-                >
-                  ⏩ Auto: {autoWave ? 'ON' : 'OFF'}
-                </button>
-                <button
-                  className="def-wavebtn def-cashout"
-                  onClick={cashOut}
-                  title="End the run now and bank the Smudge's you've earned"
-                >
-                  💰 Cash Out ({coinsFor(hud.wavesCleared, hardcore)})
-                </button>
-              </>
+              <button
+                className={`def-wavebtn ${autoWave ? 'def-auto-on' : ''}`}
+                onClick={() => setAutoWave((a) => !a)}
+                title="Auto-start the next wave the instant this one clears"
+              >
+                ⏩ Auto: {autoWave ? 'ON' : 'OFF'}
+              </button>
             )}
+            <button
+              className="def-wavebtn def-cashout"
+              onClick={cashOut}
+              title="End the run now and bank the Smudge's you've earned"
+            >
+              💰 Cash Out ({coinsFor(hud.wavesCleared, hardcore)})
+            </button>
           </div>
 
           {selTower && (
