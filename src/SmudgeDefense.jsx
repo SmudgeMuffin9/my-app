@@ -292,9 +292,12 @@ function SmudgeDefense({ onBack }) {
   const [messages, setMessages] = useState([])         // chat log
   const [draft, setDraft] = useState('')
   const [netStatus, setNetStatus] = useState('connecting')
-  const [coopSel, setCoopSel] = useState(null) // co-op: a tower you tapped, pending sell
+  const [coopSel, setCoopSel] = useState(null) // co-op: a tower you tapped (Move/Sell menu)
   const coopSelRef = useRef(null)
   useEffect(() => { coopSelRef.current = coopSel }, [coopSel])
+  const [coopMoving, setCoopMoving] = useState(null) // co-op: a tower you're relocating
+  const coopMovingRef = useRef(null)
+  useEffect(() => { coopMovingRef.current = coopMoving }, [coopMoving])
   const chanRef = useRef(null)        // the Supabase realtime channel
   const snapRef = useRef(null)        // GUEST: latest game picture from the host
   const actionQ = useRef([])          // HOST: remote actions waiting to be applied
@@ -401,7 +404,7 @@ function SmudgeDefense({ onBack }) {
     snapClock.current = 0
     setCoopRole(role); roleRef.current = role
     setHardcore(payload.hardcore)
-    setSelected(null); setHeld(null); setCoopSel(null); setScore(0); setCashedOut(false)
+    setSelected(null); setHeld(null); setCoopSel(null); setCoopMoving(null); setScore(0); setCashedOut(false)
     setAutoWave(false); autoRef.current = false
     hudRef.current = null
     setHud({ money: w.wallets[myId] || 0, money2: 0, lives: w.lives, wave: 0, waveActive: false, wavesCleared: 0 })
@@ -463,6 +466,12 @@ function SmudgeDefense({ onBack }) {
       if (!tw) return
       addMoney(w, act.by, Math.floor(tw.cost * 0.75))
       w.towers = w.towers.filter((x) => x !== tw)
+    } else if (act.kind === 'move') {
+      const tw = w.towers.find((x) => x.col === act.from.col && x.row === act.from.row && x.owner === act.by)
+      if (!tw || !isBuildable(act.to.col, act.to.row)) return
+      if (w.towers.some((x) => x.col === act.to.col && x.row === act.to.row)) return
+      const p = center(act.to.col, act.to.row)
+      tw.col = act.to.col; tw.row = act.to.row; tw.x = p.x; tw.y = p.y
     } else if (act.kind === 'startWave') {
       if (!w.waveActive) { w.wave += 1; w.queue = makeWave(w.wave, w.hardcore); w.spawnTimer = 0; w.waveActive = true }
     }
@@ -768,11 +777,21 @@ function SmudgeDefense({ onBack }) {
       ctx.fillText(tw.emoji, tw.x, tw.y)
     }
 
-    // co-op: red ring around a tower you've tapped to sell
+    // co-op: red ring around a tower you've tapped (Move/Sell menu)
     if (coopSelRef.current) {
       const p = center(coopSelRef.current.col, coopSelRef.current.row)
       ctx.strokeStyle = '#fca5a5'; ctx.lineWidth = 3
       ctx.beginPath(); ctx.arc(p.x, p.y, 18, 0, Math.PI * 2); ctx.stroke()
+    }
+    // co-op: ghost of a tower you're relocating, following the hovered cell
+    if (coopMovingRef.current) {
+      const hov = hoverRef.current
+      if (hov && isBuildable(hov.col, hov.row) && !w.towers.some((t) => t.col === hov.col && t.row === hov.row)) {
+        const p = center(hov.col, hov.row)
+        ctx.globalAlpha = 0.5; ctx.font = '24px sans-serif'
+        ctx.fillText(coopMovingRef.current.emoji, p.x, p.y)
+        ctx.globalAlpha = 1
+      }
     }
 
     // ghost preview + range ring (for a tower being built OR moved)
@@ -848,16 +867,24 @@ function SmudgeDefense({ onBack }) {
     // CO-OP: no pick-up/move. Pick a tower type then tap empty = build.
     // Tap one of YOUR OWN towers (nothing selected) = sell it.
     if (w.coop) {
+      // relocating a tower → drop it on an empty buildable spot
+      if (coopMovingRef.current) {
+        if (isBuildable(col, row) && !occupied) {
+          coopAction({ kind: 'move', from: { col: coopMovingRef.current.col, row: coopMovingRef.current.row }, to: { col, row }, by: myId })
+        }
+        setCoopMoving(null)
+        return
+      }
       if (selectedRef.current) {
         // building a new tower from the tray
         if (!isBuildable(col, row) || occupied) return
         setCoopSel(null)
         coopAction({ kind: 'build', towerId: selectedRef.current, col, row, by: myId })
       } else if (occupied && occupied.owner === myId) {
-        // tap your OWN tower → select it for selling (confirm with the Sell button)
+        // tap your OWN tower → open the Move / Sell menu
         setCoopSel({ col, row, emoji: occupied.emoji, cost: occupied.cost || 0 })
       } else {
-        // tapped empty space / someone else's tower → cancel any pending sell
+        // tapped empty space / someone else's tower → close the menu
         setCoopSel(null)
       }
       return
@@ -1058,7 +1085,13 @@ function SmudgeDefense({ onBack }) {
 
           {coop && coopSel && (
             <div className="def-bar">
-              <span className="def-incoming">Your {coopSel.emoji} — sell it?</span>
+              <span className="def-incoming">Your {coopSel.emoji} —</span>
+              <button
+                className="def-wavebtn"
+                onClick={() => { setCoopMoving({ col: coopSel.col, row: coopSel.row, emoji: coopSel.emoji }); setCoopSel(null) }}
+              >
+                ✋ Move
+              </button>
               <button
                 className="def-wavebtn def-cashout"
                 onClick={() => { coopAction({ kind: 'sell', col: coopSel.col, row: coopSel.row, by: myId }); setCoopSel(null) }}
@@ -1066,6 +1099,13 @@ function SmudgeDefense({ onBack }) {
                 ✖️ Sell for 💰{Math.floor((coopSel.cost || 0) * 0.75)}
               </button>
               <button className="def-wavebtn" onClick={() => setCoopSel(null)}>Cancel</button>
+            </div>
+          )}
+
+          {coop && coopMoving && (
+            <div className="def-bar">
+              <span className="def-incoming">Moving {coopMoving.emoji} — tap an empty spot</span>
+              <button className="def-wavebtn" onClick={() => setCoopMoving(null)}>Cancel</button>
             </div>
           )}
 
@@ -1089,7 +1129,7 @@ function SmudgeDefense({ onBack }) {
                 <button
                   key={t.id}
                   className={`def-tower ${on ? 'on' : ''} ${broke ? 'broke' : ''}`}
-                  onClick={() => { setHeld(null); setCoopSel(null); setSelected(on ? null : t.id) }}
+                  onClick={() => { setHeld(null); setCoopSel(null); setCoopMoving(null); setSelected(on ? null : t.id) }}
                   title={t.name}
                 >
                   <span className="def-tower-emoji">{t.emoji}</span>
